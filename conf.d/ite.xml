@@ -2,6 +2,7 @@
 <Site>
 	<name>ITE</name>
 	<checkpath>checks</checkpath>
+	<threads>8</threads>
 	<Nodes>
 		<node>
 			<name>Thor</name>
@@ -27,7 +28,7 @@
 			<type>rpc</type>
 			<checkargs>
 				<check>check_rpc</check>
-				<args>-P 1234 -h $i</args>
+				<args>-P 1234 -h $h</args>
 			</checkargs>
 		</node>
 		<node>
@@ -52,7 +53,19 @@
 			<type>linux</type>
 			<type>mysql</type>
 		</node>
+		<node>
+			<name>Web</name>
+			<ip>62.103.124.7</ip>
+			<ip>194.0.185.35</ip>
+			<type>bestprice</type>
+		</node>
 	</Nodes>
+
+	<Type>
+		<name>bestprice</name>
+		<check>check_http -H $h -u www.bestprice.gr</check>
+		<dependson>cds</dependson>
+	</Type>
 	<Type>
 		<name>cds</name>
 		<check>check_cds $h</check>
@@ -60,6 +73,7 @@
 	<Type>
 		<name>rpc</name>
 		<check>check_rpc</check>
+		<dependson>septera</dependson>
 	</Type>
 	<Type>
 		<name>BulletProof</name>

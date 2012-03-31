@@ -3,12 +3,13 @@
 
 	<xs:element name="Site"> <xs:complexType> <xs:sequence>
 		<xs:element name="name" type="xs:string"/>
+		<xs:element name="threads" type="xs:integer" maxOccurs="1"/>
 		<xs:element name="checkpath" type="xs:string" minOccurs="1" maxOccurs="1"/>
 
 		<xs:element name="Nodes"> <xs:complexType> <xs:sequence>
 			<xs:element name="node" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 				<xs:element name="name" type="xs:string" minOccurs="1" maxOccurs="1"/>
-				<xs:element name="ip" type="xs:string"/>
+				<xs:element name="ip" type="xs:string" maxOccurs="unbounded"/>
 				<xs:element name="type" type="xs:string" maxOccurs="unbounded"/>
 				<xs:element name="checkargs" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 					<xs:element name="check" type="xs:string"/>
