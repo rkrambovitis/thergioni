@@ -17,7 +17,9 @@ class Cascade {
 
 	public Cascade() {
 		of = new ObjectFactory();	
-		checkMap = new HashMap<String,List>();
+		checkMap = new HashMap<String,List<String>>();
+		argMap = new HashMap<String,String>();
+		//nodeCheckMap = new HashMap<String,String>();
 	}
 
 	private void printUsage() {
@@ -98,9 +100,10 @@ class Cascade {
 			for (Site.Service s: serviceList ) {
 				processService(s);
 			}
+			System.out.println("Processing Services complete\n");
 			
 
-			//System.out.println("Printing out Nodes, their services and arguments");
+			System.out.println("Processing Nodes");
 			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
 			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
 			nodes = nodeList.getNode();
@@ -116,6 +119,9 @@ class Cascade {
 		System.out.println(service.getName());
 		//System.out.println(" + " + service.getCheck());
 		checkMap.put(service.getName(), service.getCheck());
+		if (service.getCheck().isEmpty()) {
+			System.out.println("Warning: No Checks Deined for Service: " + service.getName());
+		}
 		for ( String chk : service.getCheck()) {
 			System.out.println(" + " + chk);
 		}
@@ -124,20 +130,38 @@ class Cascade {
 	private void processNode(Site.Nodes.Node node) {
 		List<String> nodeType = new ArrayList<String>();
 		String nodeName = node.getName();
-		System.out.println(nodeName);
-		nodeType = node.getType();
-		for ( String tp : nodeType) {
-			System.out.println(" + " + tp);
-		}
-		List<Site.Nodes.Node.Checkargs> checkArgs= new ArrayList<Site.Nodes.Node.Checkargs>();
-		checkArgs=node.getCheckargs();
-		for ( Site.Nodes.Node.Checkargs ca : checkArgs ) {
-			System.out.println(ca.getCheck() + " " + ca.getArgs());
+		System.out.println("\nNode: " + nodeName);
+
+		//List<Site.Nodes.Node.Checkargs> checkArgs= new ArrayList<Site.Nodes.Node.Checkargs>();
+		//checkArgs=node.getCheckargs();
+		//for ( Site.Nodes.Node.Checkargs ca : checkArgs ) {
+		for ( Site.Nodes.Node.Checkargs ca : node.getCheckargs() ) {
+			argMap.put(nodeName + "_" + ca.getCheck(), ca.getArgs());
 		}
 
+		//nodeType = node.getType();
+		for ( String ntype : node.getType() ) {
+			List<String> whatever = new ArrayList<String>();
+			whatever = checkMap.get(ntype);
+			if ( whatever != null) {
+				for ( String ntcheck : whatever) {
+					String ca = argMap.get(nodeName+"_"+ntcheck);
+					if (ca != null) {
+						ntcheck = ntcheck+" "+ca;
+					}
+					System.out.println(" + " + ntcheck);
+				}
+			} else {
+				System.out.println("Warning: No Service defined: " + ntype);
+			}
+		}
+
+		
 	}
 	
-	private Map<String,List> checkMap;
+	//private List nodeCheckMap;
+	private Map<String,String> argMap;
+	private Map<String,List<String>> checkMap;
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
