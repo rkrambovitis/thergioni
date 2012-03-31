@@ -19,6 +19,7 @@ class Cascade {
 		of = new ObjectFactory();	
 		checkMap = new HashMap<String,List<String>>();
 		argMap = new HashMap<String,String>();
+		typeMap = new HashMap<String,List<String>>();
 		//nodeCheckMap = new HashMap<String,String>();
 	}
 
@@ -82,11 +83,9 @@ class Cascade {
 	}
 
 	/*
-	 * Thi method parses an xml file an called processNode and processService
+	 * Thi method parses an xml file an called processNode and processTypes
 	 */
 	private void readXml(String fileName) {
-		//String packageName = docClass.getPackage().getName();
-		//JAXBElement<Service> koko = (JAXBElement<Service>)u.unmarshal( new FileInputStream(fileName));
 		try {
 			JAXBContext jc = JAXBContext.newInstance(Site.class);
 			Unmarshaller u = jc.createUnmarshaller();
@@ -120,6 +119,13 @@ class Cascade {
 		}
 	}
 
+	/*
+	 * This method is called for each type defined in <Types>
+	 * It will set up a hashmap with
+	 * key = typename (i.e. cds) and
+	 * data = list of check String (i.e. /home/system/check/check_mysql -h $h)
+	 * The map is called checkMap and is privately accessible
+	 */
 	private void processTypes(Site.Type type) {
 		String typeName = type.getName();
 		System.out.println(typeName);
@@ -133,48 +139,74 @@ class Cascade {
 		}
 	}
 
+
+	/* 
+	 * This method processes a given node.
+	 *
+	 * It creates a hashmap with any special check arguments.
+	 * The check must be the same as the whole check name 
+	 * (including potential paths and arguments defined generally)
+	 * key = nodename_checkname (i.e. thor_check_cds -h $h)
+	 * data = String from <checkargs>
+	 * Map is called argMap and is privately accessible
+	 *
+	 * Next, it iterated through that nodes defined types
+	 *
+	 */
 	private void processNode(Site.Nodes.Node node) {
 		List<String> nodeType = new ArrayList<String>();
 		String nodeName = node.getName();
 		String nodeIP = node.getIp();
 		System.out.println("\nNode: " + nodeName);
 
-		//List<Site.Nodes.Node.Checkargs> checkArgs= new ArrayList<Site.Nodes.Node.Checkargs>();
-		//checkArgs=node.getCheckargs();
-		//for ( Site.Nodes.Node.Checkargs ca : checkArgs ) {
+		/*
+		 * This part deals with the custon arguments per check per node
+		 */
 		for ( Site.Nodes.Node.Checkargs ca : node.getCheckargs() ) {
 			argMap.put(nodeName + "_" + ca.getCheck(), ca.getArgs());
 		}
 
-		//nodeType = node.getType();
+		/*
+		 * This part generates all checks
+		 */
 		for ( String ntype : node.getType() ) {
-			List<String> whatever = new ArrayList<String>();
-			whatever = checkMap.get(ntype);
-			if ( whatever != null) {
-				for ( String ntcheck : whatever) {
-					String ca = argMap.get(nodeName+"_"+ntcheck);
-					if (ca != null) {
-						ntcheck = ntcheck+" "+ca;
+			List<String> typeCheck = new ArrayList<String>();
+			typeCheck = checkMap.get(ntype);
+			if ( typeCheck != null ) {
+				for ( String nodeTypeCheck : typeCheck ) {
+					/*
+					 * Check for special arguments and apply them
+					 */
+					String specialCheckArgs = argMap.get(nodeName+"_"+ntcheck);
+					if (specialCheckArgs != null) {
+						nodeTypeCheck = nodeTypeCheck+" "+specialCheckArgs;
 					}
-					ntcheck=ntcheck.replaceAll("\\$h", nodeName);
+					/*
+					 * Deal with special chars
+					 * $h is for hostname (name in xml)
+					 * $i i for ip (ip in xml)
+					 */
+					nodeTypeCheck=nodeTypeCheck.replaceAll("\\$h", nodeName);
 					try {
-						ntcheck=ntcheck.replaceAll("\\$i", nodeIP);
+						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$i", nodeIP);
 					} catch (NullPointerException e) {
 						System.out.println("Error, $i is used but no ip is defined for "+nodeName);
 					}
-					if (!ntcheck.substring(0,1).equals("/")) {
-						ntcheck = checkPath+ntcheck;
+					if (!nodeTypeCheck.substring(0,1).equals("/")) {
+						nodeTypeCheck = checkPath+nodeTypeCheck;
 					}
-					//System.out.println(" + " + ntcheck);
-					doCheck(ntcheck);
 				}
 			} else {
 				System.out.println("Warning: Type not defined: " + ntype);
 			}
 		}
-
 	}
 
+	/*
+	 * This method executes a check.
+	 * It prints the check output (from stdout)
+	 * It prints the return code (i.e. 0)
+	 */
 	private void doCheck(String check) {
 		try {
 			Process process = Runtime.getRuntime().exec(check);
@@ -197,7 +229,7 @@ class Cascade {
 		}
 	}
 	
-	//private List nodeCheckMap;
+	private Map<String.List<String>> typeMap;
 	private Map<String,String> argMap;
 	private Map<String,List<String>> checkMap;
 	private String checkPath;
