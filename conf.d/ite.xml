@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Site>
 	<name>ITE</name>
+	<checkpath>checks</checkpath>
 	<Nodes>
 		<node>
 			<name>Thor</name>
 			<type>BulletProof</type>
-			<type>Link</type>
-			<type>Linux</type>
+			<type>link</type>
+			<type>linux</type>
 			<type>rpc</type>
 			<type>cds</type>
+			<type>mysql</type>
+			<checkargs>
+				<check>check_nrpe -H $h -c check_mysql</check>
+				<args>-P 3310 -t slave</args>
+			</checkargs>
 		</node>
 		<node>
 			<name>Gimli</name>
@@ -16,11 +22,12 @@
 		</node>
 		<node>
 			<name>Valkyrie</name>
+			<ip>10.5.5.69</ip>
 			<type>cds</type>
 			<type>rpc</type>
 			<checkargs>
 				<check>check_rpc</check>
-				<args>-P 1234</args>
+				<args>-P 1234 -h $i</args>
 			</checkargs>
 		</node>
 		<node>
@@ -39,16 +46,31 @@
 			<name>direwolf</name>
 			<type>cds</type>
 		</node>
+		<node>
+			<name>boromir</name>
+			<ip>10.5.5.2</ip>
+			<type>linux</type>
+			<type>mysql</type>
+		</node>
 	</Nodes>
-	<Service>
+	<Type>
 		<name>cds</name>
-		<check>check_cds</check>
-	</Service>
-	<Service>
+		<check>check_cds $h</check>
+	</Type>
+	<Type>
 		<name>rpc</name>
 		<check>check_rpc</check>
-	</Service>
-	<Service>
+	</Type>
+	<Type>
 		<name>BulletProof</name>
-	</Service>
+	</Type>
+	<Type>
+		<name>mysql</name>
+		<check>check_nrpe -H $h -c check_mysql</check>
+	</Type>
+	<Type>
+		<name>linux</name>
+		<check>check_procs $h</check>
+		<check>check_users $h</check>
+	</Type>
 </Site>

@@ -70,10 +70,10 @@ class Cascade {
 		return null;
 	}
 
-	private void printXml(Site.Service printMe) {
+	private void printXml(Site.Type printMe) {
 		try {
 			//JAXBElement<Service> gl = of.createService(printMe);
-			JAXBContext jc = JAXBContext.newInstance("Service");
+			JAXBContext jc = JAXBContext.newInstance("Type");
 			Marshaller m = jc.createMarshaller();
 			m.marshal( printMe, System.out );
 		} catch( JAXBException jbe ){
@@ -91,16 +91,21 @@ class Cascade {
 			JAXBContext jc = JAXBContext.newInstance(Site.class);
 			Unmarshaller u = jc.createUnmarshaller();
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
-			System.out.println(mySite.getName());
+			System.out.println("Site Name : " +mySite.getName());
+			checkPath = new String(mySite.getCheckpath());
+			if (checkPath.substring(checkPath.length()-1,  checkPath.length()) != "\\/") {
+				checkPath = checkPath + "/";
+			}
+			System.out.println("checks path : " +checkPath + "\n");
 
 			
-			System.out.println("Processing Services and Checks definitions");
-			List<Site.Service> serviceList = new ArrayList<Site.Service>();
-			serviceList = mySite.getService();
-			for (Site.Service s: serviceList ) {
-				processService(s);
+			System.out.println("Processing Types and Checks definitions");
+			List<Site.Type> typeList  = new ArrayList<Site.Type>();
+			typeList = mySite.getType();
+			for (Site.Type s: typeList ) {
+				processTypes(s);
 			}
-			System.out.println("Processing Services complete\n");
+			System.out.println("Processing Types complete\n");
 			
 
 			System.out.println("Processing Nodes");
@@ -115,14 +120,15 @@ class Cascade {
 		}
 	}
 
-	private void processService(Site.Service service) {
-		System.out.println(service.getName());
-		//System.out.println(" + " + service.getCheck());
-		checkMap.put(service.getName(), service.getCheck());
-		if (service.getCheck().isEmpty()) {
-			System.out.println("Warning: No Checks Deined for Service: " + service.getName());
+	private void processTypes(Site.Type type) {
+		String typeName = type.getName();
+		System.out.println(typeName);
+
+		checkMap.put(typeName, type.getCheck());
+		if (type.getCheck().isEmpty()) {
+			System.out.println("Warning: No Checks Defined for Type: " + type.getName());
 		}
-		for ( String chk : service.getCheck()) {
+		for ( String chk : type.getCheck()) {
 			System.out.println(" + " + chk);
 		}
 	}
@@ -130,6 +136,7 @@ class Cascade {
 	private void processNode(Site.Nodes.Node node) {
 		List<String> nodeType = new ArrayList<String>();
 		String nodeName = node.getName();
+		String nodeIP = node.getIp();
 		System.out.println("\nNode: " + nodeName);
 
 		//List<Site.Nodes.Node.Checkargs> checkArgs= new ArrayList<Site.Nodes.Node.Checkargs>();
@@ -149,10 +156,19 @@ class Cascade {
 					if (ca != null) {
 						ntcheck = ntcheck+" "+ca;
 					}
+					ntcheck=ntcheck.replaceAll("\\$h", nodeName);
+					try {
+						ntcheck=ntcheck.replaceAll("\\$i", nodeIP);
+					} catch (NullPointerException e) {
+						System.out.println("Error, $i is used but no ip is defined for "+nodeName);
+					}
+					if (ntcheck.substring(0,1) != "\\/") {
+						ntcheck = checkPath+ntcheck;
+					}
 					System.out.println(" + " + ntcheck);
 				}
 			} else {
-				System.out.println("Warning: No Service defined: " + ntype);
+				System.out.println("Warning: Type not defined: " + ntype);
 			}
 		}
 
@@ -162,6 +178,7 @@ class Cascade {
 	//private List nodeCheckMap;
 	private Map<String,String> argMap;
 	private Map<String,List<String>> checkMap;
+	private String checkPath;
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
