@@ -5,8 +5,6 @@ import generated.*;
 
 class Cascade {
 	public static void main(String args[]) {
-		//Service myTestService = new Service("BulletProof");
-		//System.out.println(myTestService.getName());
 		Cascade myCascade = new Cascade();
 		if (args.length == 0 ) {
 			myCascade.printUsage();
@@ -91,19 +89,22 @@ class Cascade {
 
 			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
 			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
-
-			//nodes = ite.getNodes();
-			//for ( Site.Node n : nodes ) {
-			//	System.out.println(n.getName());
-			//}
-			//System.out.println(koko.getNode().getName());
-			//List<String> types = new ArrayList<String>();
-			//types = koko.getType();
-			//for ( String s : types ) {
-			//	System.out.println(s);
-			//}
+			nodes = nodeList.getNode();
+			for ( Site.Nodes.Node n : nodes ) {
+				processNode(n);
+			}
 		} catch (Exception fnfe) {
 			System.err.println(fnfe);
+		}
+	}
+
+	private void processNode(Site.Nodes.Node node) {
+		List<String> nodeType = new ArrayList<String>();
+		String nodeName = node.getName();
+		System.out.println(nodeName);
+		nodeType = node.getType();
+		for ( String tp : nodeType) {
+			System.out.println("+" + tp);
 		}
 	}
 	
