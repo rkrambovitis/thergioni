@@ -86,9 +86,12 @@ class Cascade {
 		try {
 			JAXBContext jc = JAXBContext.newInstance(Site.class);
 			Unmarshaller u = jc.createUnmarshaller();
-			Site ite = (Site)u.unmarshal( new FileInputStream(fileName));
-			List<Site.Nodes> nodes = new ArrayList<Site.Nodes>();
-			System.out.println(ite.getName());
+			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
+			System.out.println(mySite.getName());
+
+			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
+			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
+
 			//nodes = ite.getNodes();
 			//for ( Site.Node n : nodes ) {
 			//	System.out.println(n.getName());
