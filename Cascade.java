@@ -1,7 +1,9 @@
 import java.io.*;
 import java.util.*;
+import java.math.BigInteger;
 import javax.xml.bind.*;
 import generated.*;
+import java.lang.Thread;
 
 class Cascade {
 	public static void main(String args[]) {
@@ -19,7 +21,8 @@ class Cascade {
 		of = new ObjectFactory();	
 		checkMap = new HashMap<String,List<String>>();
 		argMap = new HashMap<String,String>();
-		typeMap = new HashMap<String,List<String>>();
+		typeMap = new HashMap<String,Vector<String>>();
+		typeDeps = new HashMap<String,List<String>>();
 		//nodeCheckMap = new HashMap<String,String>();
 	}
 
@@ -83,7 +86,8 @@ class Cascade {
 	}
 
 	/*
-	 * Thi method parses an xml file an called processNode and processTypes
+	 * This method parses an xml file and calls processType and processNode
+	 * on each type and node as defined in the xml file
 	 */
 	private void readXml(String fileName) {
 		try {
@@ -95,19 +99,21 @@ class Cascade {
 			if (!checkPath.substring(checkPath.length()-1,  checkPath.length()).equals("/")) {
 				checkPath = checkPath + "/";
 			}
-			System.out.println("checks path : " +checkPath + "\n");
+			System.out.println("checks path : " + checkPath);
 
+			threads = mySite.getThreads();
+			System.out.println("threads : " + threads);
 			
-			System.out.println("Processing Types and Checks definitions");
+			//System.out.println("Processing Types and Checks definitions");
 			List<Site.Type> typeList  = new ArrayList<Site.Type>();
 			typeList = mySite.getType();
 			for (Site.Type s: typeList ) {
-				processTypes(s);
+				processType(s);
 			}
-			System.out.println("Processing Types complete\n");
+			//System.out.println("Processing Types complete\n");
 			
 
-			System.out.println("Processing Nodes");
+			//System.out.println("Processing Nodes");
 			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
 			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
 			nodes = nodeList.getNode();
@@ -125,18 +131,46 @@ class Cascade {
 	 * key = typename (i.e. cds) and
 	 * data = list of check String (i.e. /home/system/check/check_mysql -h $h)
 	 * The map is called checkMap and is privately accessible
+	 *
+	 * It will create a hashmap with 
+	 * key = typename (i.e. cds) and
+	 * data = list of dependancies (named of other types)
+	 * the map is called typeMap and is privately accessible
 	 */
-	private void processTypes(Site.Type type) {
-		String typeName = type.getName();
-		System.out.println(typeName);
+	private void processType(Site.Type type) {
 
-		checkMap.put(typeName, type.getCheck());
-		if (type.getCheck().isEmpty()) {
+		String typeName = type.getName();
+		System.out.println("\nType: " +typeName);
+
+		/*
+		 * This part deals with checks per typr
+		 */
+		List<String> typeChecks = new ArrayList<String>();
+		typeChecks = type.getCheck();
+		if (typeChecks.isEmpty()) {
 			System.out.println("Warning: No Checks Defined for Type: " + type.getName());
+		} else {
+			checkMap.put(typeName, typeChecks);
 		}
-		for ( String chk : type.getCheck()) {
+		/*
+		 * This just prints stuff
+		 */
+		for ( String chk : typeChecks) {
 			System.out.println(" + " + chk);
 		}
+
+		/*
+		 * This part deals with dependancies
+		 */
+		List<String> typeDep = new ArrayList<String>();
+		typeDep = type.getDependson();
+		if (!typeDep.isEmpty()) {
+			typeDeps.put(typeName, typeDep);
+		}
+		for (String dep : typeDep) {
+			System.out.println(" +- Dependson: " + dep);
+		}
+
 	}
 
 
@@ -150,17 +184,21 @@ class Cascade {
 	 * data = String from <checkargs>
 	 * Map is called argMap and is privately accessible
 	 *
-	 * Next, it iterated through that nodes defined types
+	 * Next, it iterates through that nodes defined types
 	 *
+	 * It creates a hashmap with type to node assosiation
+	 * key = type (i.e. cds)
+	 * data = list of nodes (i.e. thor, septera)
+	 * Map is called typeMap and is privately accessible
 	 */
 	private void processNode(Site.Nodes.Node node) {
-		List<String> nodeType = new ArrayList<String>();
+		//List<String> nodeType = new ArrayList<String>();
 		String nodeName = node.getName();
-		String nodeIP = node.getIp();
+		List<String> nodeIPs = node.getIp();
 		System.out.println("\nNode: " + nodeName);
 
 		/*
-		 * This part deals with the custon arguments per check per node
+		 * This part deals with the custom arguments per check per node
 		 */
 		for ( Site.Nodes.Node.Checkargs ca : node.getCheckargs() ) {
 			argMap.put(nodeName + "_" + ca.getCheck(), ca.getArgs());
@@ -169,35 +207,65 @@ class Cascade {
 		/*
 		 * This part generates all checks
 		 */
-		for ( String ntype : node.getType() ) {
+		for ( String nodeType : node.getType() ) {
 			List<String> typeCheck = new ArrayList<String>();
-			typeCheck = checkMap.get(ntype);
+			typeCheck = checkMap.get(nodeType);
 			if ( typeCheck != null ) {
 				for ( String nodeTypeCheck : typeCheck ) {
 					/*
 					 * Check for special arguments and apply them
 					 */
-					String specialCheckArgs = argMap.get(nodeName+"_"+ntcheck);
+					String specialCheckArgs = argMap.get(nodeName+"_" + nodeTypeCheck);
 					if (specialCheckArgs != null) {
 						nodeTypeCheck = nodeTypeCheck+" "+specialCheckArgs;
 					}
 					/*
+					 * Add checkPath
+					 */
+					if (!nodeTypeCheck.substring(0,1).equals("/")) {
+						nodeTypeCheck = checkPath+nodeTypeCheck;
+					//	System.out.println(" + " + nodeTypeCheck);
+					}
+					/*
 					 * Deal with special chars
 					 * $h is for hostname (name in xml)
-					 * $i i for ip (ip in xml)
 					 */
-					nodeTypeCheck=nodeTypeCheck.replaceAll("\\$h", nodeName);
+					String nodeTypeCheckModified;
+					if (!nodeIPs.isEmpty()) {
+						for ( String ip : nodeIPs ) {
+							nodeTypeCheckModified=nodeTypeCheck.replaceAll("\\$h", ip);
+							System.out.println(" + " + nodeTypeCheckModified);
+						}
+					} else {
+						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$h", nodeName);
+						System.out.println(" + " + nodeTypeCheck);
+					}
+					/*
 					try {
 						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$i", nodeIP);
 					} catch (NullPointerException e) {
 						System.out.println("Error, $i is used but no ip is defined for "+nodeName);
 					}
-					if (!nodeTypeCheck.substring(0,1).equals("/")) {
-						nodeTypeCheck = checkPath+nodeTypeCheck;
-					}
+					*/
 				}
 			} else {
-				System.out.println("Warning: Type not defined: " + ntype);
+				System.out.println("Warning: Type not defined: " + nodeType);
+			}
+			Vector<String> getTypeMap = new Vector<String>();
+			getTypeMap = typeMap.get(nodeType);
+			if (getTypeMap == null) {
+				Vector<String> newTypeMap = new Vector<String>();
+				newTypeMap.addElement(nodeName);
+				typeMap.put(nodeType,newTypeMap);
+				//System.out.println("Added to typeMap : " + nodeType + " +- " + nodeName);
+			} else {
+				getTypeMap.addElement(nodeName);
+				typeMap.put(nodeType,getTypeMap);
+				//System.out.print(nodeType);
+				//for ( String s : getTypeMap) {
+				//	System.out.print(" " + s);
+				//}
+				//System.out.println();
 			}
 		}
 	}
@@ -229,7 +297,9 @@ class Cascade {
 		}
 	}
 	
-	private Map<String.List<String>> typeMap;
+	private BigInteger threads;
+	private Map<String,Vector<String>> typeMap;
+	private Map<String,List<String>> typeDeps;
 	private Map<String,String> argMap;
 	private Map<String,List<String>> checkMap;
 	private String checkPath;
