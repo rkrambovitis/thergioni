@@ -18,6 +18,10 @@
 			<name>Valkyrie</name>
 			<type>cds</type>
 			<type>rpc</type>
+			<checkargs>
+				<check>check_rpc</check>
+				<args>-P 1234</args>
+			</checkargs>
 		</node>
 		<node>
 			<name>Septera</name>
@@ -39,5 +43,9 @@
 	<Service>
 		<name>cds</name>
 		<check>check_cds</check>
+	</Service>
+	<Service>
+		<name>rpc</name>
+		<check>check_rpc</check>
 	</Service>
 </Site>

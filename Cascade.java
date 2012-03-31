@@ -90,12 +90,14 @@ class Cascade {
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
 			System.out.println(mySite.getName());
 
+			System.out.println("Printing out Services and Checks");
 			List<Site.Service> serviceList = new ArrayList<Site.Service>();
 			serviceList = mySite.getService();
 			for (Site.Service s: serviceList ) {
 				processService(s);
 			}
 
+			System.out.println("Printing out Nodes, their services and arguments");
 			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
 			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
 			nodes = nodeList.getNode();
@@ -115,6 +117,12 @@ class Cascade {
 		for ( String tp : nodeType) {
 			System.out.println(" + " + tp);
 		}
+		List<Site.Nodes.Node.Checkargs> checkArgs= new ArrayList<Site.Nodes.Node.Checkargs>();
+		checkArgs=node.getCheckargs();
+		for ( Site.Nodes.Node.Checkargs ca : checkArgs ) {
+			System.out.println(ca.getCheck() + " " + ca.getArgs());
+		}
+
 	}
 
 	private void processService(Site.Service service) {
