@@ -11,7 +11,7 @@
 			</xs:sequence> </xs:complexType> </xs:element>
 		</xs:sequence> </xs:complexType> </xs:element>
 
-		<xs:element name="Service"> <xs:complexType> <xs:sequence>
+		<xs:element name="Service" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 			<xs:element name="name" type="xs:string"/>
 			<xs:element name="check" type="xs:string"/>
 		</xs:sequence> </xs:complexType> </xs:element>
