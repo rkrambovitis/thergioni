@@ -71,6 +71,6 @@
 	<Type>
 		<name>linux</name>
 		<check>check_procs $h</check>
-		<check>check_users $h</check>
+		<check>/home/gecko/Cascade/checks/check_users $h</check>
 	</Type>
 </Site>
