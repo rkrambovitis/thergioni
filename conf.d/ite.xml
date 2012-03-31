@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Site>
+	<name>ITE</name>
+	<Nodes>
+		<node>
+			<name>Thor</name>
+			<type>BulletProof</type>
+			<type>Link</type>
+			<type>Linux</type>
+			<type>rpc</type>
+			<type>cds</type>
+		</node>
+		<node>
+			<name>Gimli</name>
+			<type>cds</type>
+		</node>
+		<node>
+			<name>Valkyrie</name>
+			<type>cds</type>
+			<type>rpc</type>
+		</node>
+		<node>
+			<name>Septera</name>
+			<type>cds</type>
+		</node>
+		<node>
+			<name>Sheldon</name>
+			<type>cds</type>
+		</node>
+		<node>
+			<name>blade5</name>
+			<type>cds</type>
+		</node>
+		<node>
+			<name>direwolf</name>
+			<type>cds</type>
+		</node>
+	</Nodes>
+	<Service>
+		<name>cds</name>
+		<check>check_cds</check>
+	</Service>
+</Site>
