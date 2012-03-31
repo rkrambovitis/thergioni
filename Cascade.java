@@ -67,7 +67,7 @@ class Cascade {
 		return null;
 	}
 
-	private void printXml(Service printMe) {
+	private void printXml(Site.Service printMe) {
 		try {
 			//JAXBElement<Service> gl = of.createService(printMe);
 			JAXBContext jc = JAXBContext.newInstance("Service");
@@ -78,6 +78,9 @@ class Cascade {
 		}
 	}
 
+	/*
+	 * Thi method parses an xml file an called processNode and processService
+	 */
 	private void readXml(String fileName) {
 		//String packageName = docClass.getPackage().getName();
 		//JAXBElement<Service> koko = (JAXBElement<Service>)u.unmarshal( new FileInputStream(fileName));
@@ -86,6 +89,12 @@ class Cascade {
 			Unmarshaller u = jc.createUnmarshaller();
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
 			System.out.println(mySite.getName());
+
+			List<Site.Service> serviceList = new ArrayList<Site.Service>();
+			serviceList = mySite.getService();
+			for (Site.Service s: serviceList ) {
+				processService(s);
+			}
 
 			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
 			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
@@ -104,8 +113,13 @@ class Cascade {
 		System.out.println(nodeName);
 		nodeType = node.getType();
 		for ( String tp : nodeType) {
-			System.out.println("+" + tp);
+			System.out.println(" + " + tp);
 		}
+	}
+
+	private void processService(Site.Service service) {
+		System.out.println(service.getName());
+		System.out.println(" + " + service.getCheck());
 	}
 	
 	private ObjectFactory of;
