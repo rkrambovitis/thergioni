@@ -58,6 +58,7 @@
 			<ip>62.103.124.7</ip>
 			<ip>194.0.185.35</ip>
 			<type>bestprice</type>
+			<type>pathfinder</type>
 		</node>
 	</Nodes>
 
