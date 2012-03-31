@@ -93,7 +93,7 @@ class Cascade {
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
 			System.out.println("Site Name : " +mySite.getName());
 			checkPath = new String(mySite.getCheckpath());
-			if (checkPath.substring(checkPath.length()-1,  checkPath.length()) != "\\/") {
+			if (!checkPath.substring(checkPath.length()-1,  checkPath.length()).equals("/")) {
 				checkPath = checkPath + "/";
 			}
 			System.out.println("checks path : " +checkPath + "\n");
@@ -162,17 +162,39 @@ class Cascade {
 					} catch (NullPointerException e) {
 						System.out.println("Error, $i is used but no ip is defined for "+nodeName);
 					}
-					if (ntcheck.substring(0,1) != "\\/") {
+					if (!ntcheck.substring(0,1).equals("/")) {
 						ntcheck = checkPath+ntcheck;
 					}
-					System.out.println(" + " + ntcheck);
+					//System.out.println(" + " + ntcheck);
+					doCheck(ntcheck);
 				}
 			} else {
 				System.out.println("Warning: Type not defined: " + ntype);
 			}
 		}
 
-		
+	}
+
+	private void doCheck(String check) {
+		try {
+			Process process = Runtime.getRuntime().exec(check);
+			try {
+				process.waitFor();
+			} catch (InterruptedException e) {
+				System.out.println(e);
+			}
+			InputStream stdin = process.getInputStream();
+			String line;
+			BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
+			while ((line = is.readLine ()) != null) {
+				System.out.println(line);
+			}
+			System.out.println(process.exitValue());
+			is.close();
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	//private List nodeCheckMap;
