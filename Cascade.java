@@ -17,6 +17,7 @@ class Cascade {
 
 	public Cascade() {
 		of = new ObjectFactory();	
+		checkMap = new HashMap<String,List>();
 	}
 
 	private void printUsage() {
@@ -90,14 +91,16 @@ class Cascade {
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
 			System.out.println(mySite.getName());
 
-			System.out.println("Printing out Services and Checks");
+			
+			System.out.println("Processing Services and Checks definitions");
 			List<Site.Service> serviceList = new ArrayList<Site.Service>();
 			serviceList = mySite.getService();
 			for (Site.Service s: serviceList ) {
 				processService(s);
 			}
+			
 
-			System.out.println("Printing out Nodes, their services and arguments");
+			//System.out.println("Printing out Nodes, their services and arguments");
 			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
 			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
 			nodes = nodeList.getNode();
@@ -106,6 +109,15 @@ class Cascade {
 			}
 		} catch (Exception fnfe) {
 			System.err.println(fnfe);
+		}
+	}
+
+	private void processService(Site.Service service) {
+		System.out.println(service.getName());
+		//System.out.println(" + " + service.getCheck());
+		checkMap.put(service.getName(), service.getCheck());
+		for ( String chk : service.getCheck()) {
+			System.out.println(" + " + chk);
 		}
 	}
 
@@ -124,12 +136,8 @@ class Cascade {
 		}
 
 	}
-
-	private void processService(Site.Service service) {
-		System.out.println(service.getName());
-		System.out.println(" + " + service.getCheck());
-	}
 	
+	private Map<String,List> checkMap;
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
