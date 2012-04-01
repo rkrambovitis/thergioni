@@ -58,7 +58,6 @@
 		</node>
 		<node>
 			<name>Web</name>
-			<top>true</top>
 			<ip>62.103.124.28</ip>
 			<ip>62.103.124.29</ip>
 			<ip>194.0.185.28</ip>
@@ -76,6 +75,7 @@
 
 	<Type>
 		<name>bestprice</name>
+		<top>true</top>
 		<check>/usr/lib/nagios/plugins/check_http -I $h -H www.bestprice.gr</check>
 		<dependson>cds</dependson>
 	</Type>
