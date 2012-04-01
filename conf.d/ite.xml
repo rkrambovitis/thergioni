@@ -4,8 +4,11 @@
 	<checkpath>checks</checkpath>
 	<parallel_checks>8</parallel_checks>
 	<log_file>/tmp/foo.txt</log_file>
-	<log_level>config</log_level> 
+	<!--
+	<log_level>all</log_level> 
 	<check_timeout>5</check_timeout>
+	<main_loop_pause_ms>5000</main_loop_pause_ms> 
+	-->
 	<Nodes>
 		<node>
 			<name>Thor</name>

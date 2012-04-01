@@ -19,6 +19,7 @@ class Cascade {
 		myCascade.readXml(args[0]);
 		//myCascade.check("bestprice");
 		//myCascade.check("cds");
+		myCascade.enterMainLoop();
 	}
 
 	public Cascade() {
@@ -44,11 +45,13 @@ class Cascade {
 			FileHandler fh = new FileHandler(fileName, 52428800, 2, true);
 			logger = Logger.getLogger("Cascade");
 			String lcll = logLevel.toLowerCase();
+			System.err.println(lcll);
 			if (lcll.equals("severe")) {
 				logger.setLevel(Level.SEVERE);
 			} else if  (lcll.equals("warning")) {
 				logger.setLevel(Level.WARNING);
 			} else if  (lcll.equals("info")) {
+				System.err.println("I am here");
 				logger.setLevel(Level.INFO);
 			} else if  (lcll.equals("config")) {
 				logger.setLevel(Level.CONFIG);
@@ -58,6 +61,8 @@ class Cascade {
 				logger.setLevel(Level.FINER);
 			} else if  (lcll.equals("finest")) {
 				logger.setLevel(Level.FINEST);
+			} else if  (lcll.equals("all")) {
+				logger.setLevel(Level.ALL);
 			} else {
 				logger.setLevel(Level.INFO);
 			}
@@ -81,7 +86,11 @@ class Cascade {
 			Unmarshaller u = jc.createUnmarshaller();
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
 
-			setupLogger(mySite.getLogFile(),mySite.getLogLevel());
+			if (mySite.getLogLevel() == null) {
+				setupLogger(mySite.getLogFile(),"Info");
+			} else {
+				setupLogger(mySite.getLogFile(),mySite.getLogLevel());
+			}
 
 			logger.config("Site Name : " +mySite.getName());
 			checkPath = new String(mySite.getCheckpath());
@@ -94,8 +103,19 @@ class Cascade {
 			logger.config("threads : " + threads);
 
 			timeOut = mySite.getCheckTimeout().longValue();
+			if (timeOut == null) {
+				logger.warning("check_timeout not set, using default = 5");
+				timeOut=5L;
+			}
 			logger.config("check timeout : " + timeOut);
-			
+
+			pauseMs = mySite.getMainLoopPauseMs();
+			if (pauseMs == null) {
+				logger.warning("main_loop_pause_ms not set, using default = 60000");
+				pauseMs=new BigInteger("60000");
+			}
+			logger.config("Main loop pause time : " + pauseMs);
+
 			logger.fine("Processing Types and Checks definitions");
 			List<Site.Type> typeList  = new ArrayList<Site.Type>();
 			typeList = mySite.getType();
@@ -190,7 +210,6 @@ class Cascade {
 	 * Map is called typeMap and is privately accessible
 	 */
 	private void processNode(Site.Nodes.Node node) {
-		//List<String> nodeType = new ArrayList<String>();
 		String nodeName = node.getName();
 		List<String> nodeIPs = node.getIp();
 		logger.config("Node: " + nodeName);
@@ -348,6 +367,25 @@ class Cascade {
 	}
 
 
+	private void enterMainLoop() {
+		if (topTypes.size() == 0) {
+			logger.severe("ERROR: You must set at least 1 top level type");
+			System.err.println("ERROR: You must set at least 1 top level type");
+			System.exit(1);
+		}
+		while (true) {
+			for (String top : topTypes) {
+				check(top);
+			}
+			try {
+				logger.fine("top checks complete, initiating sleep");
+				Thread.sleep(pauseMs.longValue());
+			} catch (InterruptedException e) {
+				logger.severe(e.getMessage());
+			}
+		}
+	}
+
 	/*
 	 * This class is used for threading.
 	 * The check name is given in the constructor
@@ -385,6 +423,10 @@ class Cascade {
 		private String check;
 	}
 
+	/*
+	 * Simple Log Formatter
+	 * Keeps logs nice and compact
+	 */
 	private class myLogFormatter extends java.util.logging.Formatter {
 		public String format(LogRecord rec) {
 			StringBuffer buf = new StringBuffer(1000);
@@ -426,6 +468,7 @@ class Cascade {
 	private int threads;
 	private String checkPath;
 	private Long timeOut;
+	private BigInteger pauseMs;
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
