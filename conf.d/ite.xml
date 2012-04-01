@@ -64,7 +64,7 @@
 
 	<Type>
 		<name>bestprice</name>
-		<check>/usr/lib/nagios/plugins/check_http -I $h -H www.bestprice.gr -w 0.5 -c 2</check>
+		<check>/usr/lib/nagios/plugins/check_http -I $h -H www.bestprice.gr -w 0.2 -c 0.5</check>
 		<dependson>cds</dependson>
 	</Type>
 	<Type>

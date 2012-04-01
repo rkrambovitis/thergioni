@@ -13,10 +13,10 @@ class Cascade {
 			myCascade.printUsage();
 			System.exit(0);
 		}
-		//myCascade.parseFile(args[0]);
-		//myCascade.doXmlStuff();
 		myCascade.readXml(args[0]);
+		System.out.println("Initialization Complete\n\n\n");
 		myCascade.check("bestprice");
+		//myCascade.check("cds");
 	}
 
 	public Cascade() {
@@ -27,14 +27,16 @@ class Cascade {
 		typeDeps = new HashMap<String,List<String>>();
 		nodeCheckMap = new HashMap<String,Vector<String>>();
 		typeCheckMap = new HashMap<String,Vector<String>>();
-		queue = new ArrayBlockingQueue<Runnable>(10); 
-		pool = new ThreadPoolExecutor(10, 10, new Long(1000),TimeUnit.MILLISECONDS, this.queue);
 	}
 
 	private void printUsage() {
 		System.out.println("Usage: java Cascade <path_to_config>");
 	}
-
+	
+	/*
+	 * Old methods, not currently used
+	 */
+	/*
 	private void parseFile(String firstArg) {
 		confFile=new String(firstArg);
 		try {
@@ -89,6 +91,8 @@ class Cascade {
 			System.err.println(jbe);
 		}
 	}
+        */
+
 
 	/*
 	 * This method parses an xml file and calls processType and processNode
@@ -106,7 +110,7 @@ class Cascade {
 			}
 			System.out.println("checks path : " + checkPath);
 
-			threads = mySite.getThreads();
+			threads = mySite.getThreads().intValue();
 			System.out.println("threads : " + threads);
 			
 			//System.out.println("Processing Types and Checks definitions");
@@ -339,7 +343,8 @@ class Cascade {
 	}
 
 	/*
-	 * This method prints all nodes and checks related to a type
+	 * This method deals with checks and threading.
+	 * Mainly for testing.
 	 */
 	private void check(String type) {
 		boolean somethingFailed=false;
@@ -348,26 +353,25 @@ class Cascade {
 			System.out.println("No "+type+" checks found!");
 		} else {
 			int checksCount = checks.size();
-			System.out.println(checksCount);
-					/*
-					for (String c : nodeChecks) {
-						System.out.print(" + " + c);
-						Checker myChecker = new Checker(c);
-						Thread checkerThread = new Thread(myChecker);
-						checkerThread.start();
-						try {
-							checkerThread.join();
-						} catch (InterruptedException e) {
-						}
-						if (myChecker.getExitCode() != 0) {
-							somethingFailed = true;
-							System.out.println("\n"+myChecker.getOutput());
-						} else {
-							System.out.println(" ... OK");
-						}
-
+			ExecutorService executor = Executors.newFixedThreadPool(threads);
+			List<Future<String>> list = new ArrayList<Future<String>>();
+			for ( String check : checks ) {
+				Callable<String> worker = new Checker(check);
+				Future<String> submit = executor.submit(worker);
+				list.add(submit);
+			}
+			for (Future<String> future : list) {
+				try {
+					String threadOutput = future.get();
+					if (!threadOutput.equals("OK")) {
+						somethingFailed=true;
 					}
-					*/
+					System.out.println(threadOutput);
+				} catch (Exception e) {
+					System.out.println(e);
+				}
+			}
+			executor.shutdown();
 		}
 		if (somethingFailed) {
 			List<String> deps = typeDeps.get(type);
@@ -380,58 +384,41 @@ class Cascade {
 		}
 	}
 
-	private static class Checker implements Runnable {
+
+	/*
+	 * This class is used for threading.
+	 * The check name is given in the constructor
+	 * It returns OK if the check returns OK
+	 * Else it returns the 1st line of the output of the script
+	 */
+	private static class Checker implements Callable<String> {
 		public Checker(String theCheck){
 			check = new String(theCheck);
-			exitCode=0;
-			isFinished=false;
-			output = new String();
 		}
 
-		public void run() {
-			//System.out.println(Thread.currentThread().getName() + " -> " + check );
-			doCheck();
-		}
-		
-		private void doCheck() {
+		public String call() {
 			try {
 				Process process = Runtime.getRuntime().exec(check);
 				try {
 					process.waitFor();
-					isFinished=true;
 				} catch (InterruptedException e) {
 					System.out.println(e);
 				}
 				if (process.exitValue() == 0 ) {
-					exitCode = 0;
+					return new String("OK");
 				} else {
 					InputStream stdin = process.getInputStream();
 					BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
 					String line = is.readLine();
 					is.close();
-					exitCode = process.exitValue();
-					output = line;
+					return line;
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			return null;
 		}
 
-		public int getExitCode() {
-			return exitCode;
-		}
-
-		public String getOutput() {
-			return output;
-		}
-
-		public boolean getFinished() {
-			return isFinished;
-		}
-
-		private boolean isFinished;
-		private String output;
-		private int exitCode;
 		private String check;
 	}
 
@@ -447,12 +434,10 @@ class Cascade {
 	private Map<String,String> argMap;
 	// Maps type to default checks (used at initialization)
 	private Map<String,List<String>> checkMap;
-	private BigInteger threads;
+	private int threads;
 	private String checkPath;
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
-	private ThreadPoolExecutor pool;
-	private BlockingQueue<Runnable> queue;
 
 }
