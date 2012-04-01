@@ -6,6 +6,8 @@ import generated.*;
 import java.lang.Thread;
 import java.util.concurrent.*;
 import java.util.logging.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 class Cascade {
 	public static void main(String args[]) {
@@ -95,10 +97,28 @@ class Cascade {
 
 	private void setupLogger(String fileName, String logLevel) {
 		try {
-			FileHandler fh = new FileHandler(fileName);
+			FileHandler fh = new FileHandler(fileName, 52428800, 2, true);
 			logger = Logger.getLogger("Cascade");
-			logger.setLevel(Level.CONFIG);
-			fh.setFormatter(new SimpleFormatter());
+			String lcll = logLevel.toLowerCase();
+			if (lcll.equals("severe")) {
+				logger.setLevel(Level.SEVERE);
+			} else if  (lcll.equals("warning")) {
+				logger.setLevel(Level.WARNING);
+			} else if  (lcll.equals("info")) {
+				logger.setLevel(Level.INFO);
+			} else if  (lcll.equals("config")) {
+				logger.setLevel(Level.CONFIG);
+			} else if  (lcll.equals("fine")) {
+				logger.setLevel(Level.FINE);
+			} else if  (lcll.equals("finer")) {
+				logger.setLevel(Level.FINER);
+			} else if  (lcll.equals("finest")) {
+				logger.setLevel(Level.FINEST);
+			} else {
+				logger.setLevel(Level.INFO);
+			}
+
+			fh.setFormatter(new myLogFormatter());
 			logger.setUseParentHandlers(false);
 			logger.addHandler(fh);
 		} catch (IOException e) {
@@ -129,6 +149,8 @@ class Cascade {
 			threads = mySite.getParallelChecks().intValue();
 			logger.config("threads : " + threads);
 
+			timeOut = mySite.getCheckTimeout().longValue();
+			logger.config("check timeout : " + timeOut);
 			
 			logger.fine("Processing Types and Checks definitions");
 			List<Site.Type> typeList  = new ArrayList<Site.Type>();
@@ -146,7 +168,7 @@ class Cascade {
 			for ( Site.Nodes.Node n : nodes ) {
 				processNode(n);
 			}
-			logger.info("Initialization Complete\n\n\n");
+			logger.info("Initialization Complete\n");
 		} catch (Exception fnfe) {
 			logger.severe(fnfe.getMessage());
 		}
@@ -222,7 +244,7 @@ class Cascade {
 		//List<String> nodeType = new ArrayList<String>();
 		String nodeName = node.getName();
 		List<String> nodeIPs = node.getIp();
-		logger.config("\nNode: " + nodeName);
+		logger.config("Node: " + nodeName);
 
 		/*
 		 * This part deals with the custom arguments per check per node
@@ -289,7 +311,9 @@ class Cascade {
 	 * This method executes a check.
 	 * It prints the check output (from stdout)
 	 * It prints the return code (i.e. 0)
+	 * No longer used (see threading)
 	 */
+	/*
 	private String doCheck(String check) {
 		try {
 			Process process = Runtime.getRuntime().exec(check);
@@ -312,7 +336,7 @@ class Cascade {
 		}
 		return null;
 	}
-	
+	*/
 	/*
 	 * This method adds items to a map that contains all checks.
 	 * The form of data in the map is like this:
@@ -362,6 +386,7 @@ class Cascade {
 	 */
 	private void check(String type) {
 		boolean somethingFailed=false;
+		logger.info("Performing checks for " + type);
 		Vector<String> checks = typeCheckMap.get(type);
 		if (checks == null) {
 			logger.info("No "+type+" checks found!");
@@ -376,16 +401,19 @@ class Cascade {
 			}
 			for (Future<String> future : list) {
 				try {
-					String threadOutput = future.get();
+					String threadOutput = future.get(timeOut, TimeUnit.SECONDS);
+					future.cancel(true);
 					if (!threadOutput.equals("OK")) {
-						somethingFailed=true;
-						logger.warning("NOT OK: Will check any dependancies");
+						if (!somethingFailed) {
+							somethingFailed=true;
+							logger.warning("NOT OK: dependancy check triggered");
+						}
 						logger.warning(threadOutput);
 					} else {
 						logger.info(threadOutput);
 					}
 				} catch (Exception e) {
-					logger.severe(e.getMessage());
+					logger.warning("Check Timeout");
 				}
 			}
 			executor.shutdown();
@@ -394,7 +422,7 @@ class Cascade {
 			List<String> deps = typeDeps.get(type);
 			if (deps != null) {
 				for (String d : deps) {
-					logger.info(" Depends on : " + d);
+					logger.info(" ++ Depends on : " + d);
 					check(d);
 				}
 			}
@@ -439,6 +467,32 @@ class Cascade {
 		private String check;
 	}
 
+	private class myLogFormatter extends java.util.logging.Formatter {
+		public String format(LogRecord rec) {
+			StringBuffer buf = new StringBuffer(1000);
+			buf.append(calcDate(rec.getMillis()));
+			buf.append(" ");
+			buf.append(rec.getLevel());
+			buf.append(" : "); 
+			buf.append(formatMessage(rec));
+			buf.append('\n');
+			return buf.toString();
+		}
+
+		private String calcDate(long millisecs) {
+			SimpleDateFormat date_format = new SimpleDateFormat("MMM dd HH:mm");
+			Date resultdate = new Date(millisecs);
+			return date_format.format(resultdate);
+		}
+
+		public String getHead(Handler h) {
+			return "Cascade Logger Initiated : " + (new Date()) + "\n";
+		}
+		public String getTail(Handler h) {
+			return "Cascade Logger Exiting : " + (new Date()) + "\n";
+		}
+	}
+
 	// Maps type to all checks
 	private Map<String,Vector<String>> typeCheckMap;
 	// Maps node_type to full checks
@@ -453,6 +507,7 @@ class Cascade {
 	private Map<String,List<String>> checkMap;
 	private int threads;
 	private String checkPath;
+	private Long timeOut;
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;

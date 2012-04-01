@@ -6,6 +6,7 @@
 		<xs:element name="parallel_checks" type="xs:integer" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="log_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="log_level" type="xs:string"/>
+		<xs:element name="check_timeout" type="xs:integer"/>
 		<xs:element name="checkpath" type="xs:string" minOccurs="1" maxOccurs="1"/>
 
 		<xs:element name="Nodes"> <xs:complexType> <xs:sequence>
