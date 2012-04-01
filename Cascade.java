@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import javax.xml.bind.*;
 import generated.*;
 import java.lang.Thread;
+import java.util.concurrent.*;
 
 class Cascade {
 	public static void main(String args[]) {
@@ -15,8 +16,6 @@ class Cascade {
 		//myCascade.parseFile(args[0]);
 		//myCascade.doXmlStuff();
 		myCascade.readXml(args[0]);
-		myCascade.check("asd");
-		myCascade.check("cds");
 		myCascade.check("bestprice");
 	}
 
@@ -27,6 +26,9 @@ class Cascade {
 		typeMap = new HashMap<String,Vector<String>>();
 		typeDeps = new HashMap<String,List<String>>();
 		nodeCheckMap = new HashMap<String,Vector<String>>();
+		typeCheckMap = new HashMap<String,Vector<String>>();
+		queue = new ArrayBlockingQueue<Runnable>(10); 
+		pool = new ThreadPoolExecutor(10, 10, new Long(1000),TimeUnit.MILLISECONDS, this.queue);
 	}
 
 	private void printUsage() {
@@ -259,11 +261,6 @@ class Cascade {
 			} else {
 				getTypeMap.addElement(nodeName);
 				typeMap.put(nodeType,getTypeMap);
-				//System.out.print(nodeType);
-				//for ( String s : getTypeMap) {
-				//	System.out.print(" " + s);
-				//}
-				//System.out.println();
 			}
 		}
 	}
@@ -286,12 +283,9 @@ class Cascade {
 			} else {
 				InputStream stdin = process.getInputStream();
 				BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
-				//while ((line = is.readLine ()) != null) {
-					String line = is.readLine();
-					is.close();
-					return(line);
-					//System.out.println(line);
-				//}
+				String line = is.readLine();
+				is.close();
+				return(line);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -305,9 +299,18 @@ class Cascade {
 	 * key = nodename_type i.e. thor_cds
 	 * data = vector with checks i.e. check_cds -h thor
 	 * The Map is called nodeCheckMap
+	 *
+	 * Second map added:
+	 * key - type i.e. cds
+	 * data = vector with checks
+	 * The map is called typeCheckMap
 	 */
 	private void mapCheck(String node, String type, String check) {
+		/*
+		 * first part, maps to nodeCheckMap
+		 */
 		String nodePlusCheck = (node+"_"+type);
+		//System.out.println("putting into nodeCheckMap " + nodePlusCheck + " " + check);
 		Vector<String> getNodeCheckMap = new Vector<String>();
 		getNodeCheckMap = nodeCheckMap.get(nodePlusCheck);
 		if (getNodeCheckMap == null) {
@@ -318,38 +321,53 @@ class Cascade {
 			getNodeCheckMap.addElement(check);
 			nodeCheckMap.put(nodePlusCheck, getNodeCheckMap);
 		}
+
+		/*
+		 * Seconf part, maps to typeCheckMap
+		 */
+		//System.out.println("putting into typeCheckMap " + type + " " + check);
+		Vector<String> getTypeCheckMap = new Vector<String>();
+		getTypeCheckMap = typeCheckMap.get(type);
+		if (getTypeCheckMap == null) {
+			Vector<String> newTypeCheckMap = new Vector<String>();
+			newTypeCheckMap.addElement(check);
+			typeCheckMap.put(type,newTypeCheckMap);
+		} else {
+			getTypeCheckMap.addElement(check);
+			typeCheckMap.put(type, getTypeCheckMap);
+		}
 	}
 
 	/*
 	 * This method prints all nodes and checks related to a type
 	 */
-	private boolean check(String type) {
-		System.out.println("\nNodes that are of type : " + type);
+	private void check(String type) {
 		boolean somethingFailed=false;
-		Vector<String> nodes = typeMap.get(type);
-		if (nodes == null) {
-			System.out.println("No "+type+" nodes found!");
+		Vector<String> checks = typeCheckMap.get(type);
+		if (checks == null) {
+			System.out.println("No "+type+" checks found!");
 		} else {
-			for (String n : nodes) { 
-				System.out.println(n);
-				String nodePlusType = (n+"_"+type);
-				Vector<String> nodeChecks = nodeCheckMap.get(nodePlusType);
-				if (nodeChecks == null) {
-					System.out.println("No " + type + " checks found for " + n);
-				} else {
+			int checksCount = checks.size();
+			System.out.println(checksCount);
+					/*
 					for (String c : nodeChecks) {
 						System.out.print(" + " + c);
-					 	String checkResult = doCheck(c);
-						if (!checkResult.equals("OK")) {
+						Checker myChecker = new Checker(c);
+						Thread checkerThread = new Thread(myChecker);
+						checkerThread.start();
+						try {
+							checkerThread.join();
+						} catch (InterruptedException e) {
+						}
+						if (myChecker.getExitCode() != 0) {
 							somethingFailed = true;
-							System.out.println("\n"+checkResult);
+							System.out.println("\n"+myChecker.getOutput());
 						} else {
 							System.out.println(" ... OK");
 						}
 
 					}
-				}
-			}
+					*/
 		}
 		if (somethingFailed) {
 			List<String> deps = typeDeps.get(type);
@@ -360,9 +378,65 @@ class Cascade {
 				}
 			}
 		}
-		return somethingFailed;
 	}
 
+	private static class Checker implements Runnable {
+		public Checker(String theCheck){
+			check = new String(theCheck);
+			exitCode=0;
+			isFinished=false;
+			output = new String();
+		}
+
+		public void run() {
+			//System.out.println(Thread.currentThread().getName() + " -> " + check );
+			doCheck();
+		}
+		
+		private void doCheck() {
+			try {
+				Process process = Runtime.getRuntime().exec(check);
+				try {
+					process.waitFor();
+					isFinished=true;
+				} catch (InterruptedException e) {
+					System.out.println(e);
+				}
+				if (process.exitValue() == 0 ) {
+					exitCode = 0;
+				} else {
+					InputStream stdin = process.getInputStream();
+					BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
+					String line = is.readLine();
+					is.close();
+					exitCode = process.exitValue();
+					output = line;
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+		public int getExitCode() {
+			return exitCode;
+		}
+
+		public String getOutput() {
+			return output;
+		}
+
+		public boolean getFinished() {
+			return isFinished;
+		}
+
+		private boolean isFinished;
+		private String output;
+		private int exitCode;
+		private String check;
+	}
+
+	// Maps type to all checks
+	private Map<String,Vector<String>> typeCheckMap;
 	// Maps node_type to full checks
 	private Map<String,Vector<String>> nodeCheckMap;
 	// Maps type to nodes
@@ -378,4 +452,7 @@ class Cascade {
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
+	private ThreadPoolExecutor pool;
+	private BlockingQueue<Runnable> queue;
+
 }
