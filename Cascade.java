@@ -17,7 +17,7 @@ class Cascade {
 			System.exit(0);
 		}
 		myCascade.readXml(args[0]);
-		myCascade.check("bestprice");
+		//myCascade.check("bestprice");
 		//myCascade.check("cds");
 	}
 
@@ -29,6 +29,7 @@ class Cascade {
 		typeDeps = new HashMap<String,List<String>>();
 		nodeCheckMap = new HashMap<String,Vector<String>>();
 		typeCheckMap = new HashMap<String,Vector<String>>();
+		topTypes = new Vector<String>();
 	}
 
 	private void printUsage() {
@@ -95,6 +96,9 @@ class Cascade {
 	}
         */
 
+	/*
+	 * This method does excactly what is says on the tin
+	 */
 	private void setupLogger(String fileName, String logLevel) {
 		try {
 			FileHandler fh = new FileHandler(fileName, 52428800, 2, true);
@@ -189,7 +193,7 @@ class Cascade {
 	private void processType(Site.Type type) {
 
 		String typeName = type.getName();
-		logger.config("\nType: " +typeName);
+		logger.config("Type: " +typeName);
 
 		/*
 		 * This part deals with checks per typr
@@ -218,6 +222,11 @@ class Cascade {
 		}
 		for (String dep : typeDep) {
 			logger.config(" +- Dependson: " + dep);
+		}
+
+		if (type.isTop()) {
+			logger.config(" +++ : type " + typeName + " is top level");
+			topTypes.addElement(typeName);
 		}
 
 	}
@@ -512,4 +521,5 @@ class Cascade {
 	private String confFile;
 	private String confPath;
 	private Logger logger;
+	private Vector<String> topTypes;
 }
