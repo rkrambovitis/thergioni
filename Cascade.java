@@ -15,6 +15,9 @@ class Cascade {
 		//myCascade.parseFile(args[0]);
 		//myCascade.doXmlStuff();
 		myCascade.readXml(args[0]);
+		myCascade.check("asd");
+		myCascade.check("cds");
+		myCascade.check("bestprice");
 	}
 
 	public Cascade() {
@@ -23,7 +26,7 @@ class Cascade {
 		argMap = new HashMap<String,String>();
 		typeMap = new HashMap<String,Vector<String>>();
 		typeDeps = new HashMap<String,List<String>>();
-		//nodeCheckMap = new HashMap<String,String>();
+		nodeCheckMap = new HashMap<String,Vector<String>>();
 	}
 
 	private void printUsage() {
@@ -230,23 +233,18 @@ class Cascade {
 					 * Deal with special chars
 					 * $h is for hostname (name in xml)
 					 */
-					String nodeTypeCheckModified;
+					String nodeTypeCheckModified = new String();
 					if (!nodeIPs.isEmpty()) {
 						for ( String ip : nodeIPs ) {
 							nodeTypeCheckModified=nodeTypeCheck.replaceAll("\\$h", ip);
 							System.out.println(" + " + nodeTypeCheckModified);
+							mapCheck(nodeName, nodeType, nodeTypeCheckModified);
 						}
 					} else {
 						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$h", nodeName);
 						System.out.println(" + " + nodeTypeCheck);
+						mapCheck(nodeName, nodeType, nodeTypeCheck);
 					}
-					/*
-					try {
-						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$i", nodeIP);
-					} catch (NullPointerException e) {
-						System.out.println("Error, $i is used but no ip is defined for "+nodeName);
-					}
-					*/
 				}
 			} else {
 				System.out.println("Warning: Type not defined: " + nodeType);
@@ -275,7 +273,7 @@ class Cascade {
 	 * It prints the check output (from stdout)
 	 * It prints the return code (i.e. 0)
 	 */
-	private void doCheck(String check) {
+	private String doCheck(String check) {
 		try {
 			Process process = Runtime.getRuntime().exec(check);
 			try {
@@ -283,25 +281,99 @@ class Cascade {
 			} catch (InterruptedException e) {
 				System.out.println(e);
 			}
-			InputStream stdin = process.getInputStream();
-			String line;
-			BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
-			while ((line = is.readLine ()) != null) {
-				System.out.println(line);
+			if (process.exitValue() == 0 ) {
+				return("OK");
+			} else {
+				InputStream stdin = process.getInputStream();
+				BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
+				//while ((line = is.readLine ()) != null) {
+					String line = is.readLine();
+					is.close();
+					return(line);
+					//System.out.println(line);
+				//}
 			}
-			System.out.println(process.exitValue());
-			is.close();
-			
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		return null;
 	}
 	
-	private BigInteger threads;
+	/*
+	 * This method adds items to a map that contains all checks.
+	 * The form of data in the map is like this:
+	 * key = nodename_type i.e. thor_cds
+	 * data = vector with checks i.e. check_cds -h thor
+	 * The Map is called nodeCheckMap
+	 */
+	private void mapCheck(String node, String type, String check) {
+		String nodePlusCheck = (node+"_"+type);
+		Vector<String> getNodeCheckMap = new Vector<String>();
+		getNodeCheckMap = nodeCheckMap.get(nodePlusCheck);
+		if (getNodeCheckMap == null) {
+			Vector<String> newNodeCheckMap = new Vector<String>();
+			newNodeCheckMap.addElement(check);
+			nodeCheckMap.put(nodePlusCheck,newNodeCheckMap);
+		} else {
+			getNodeCheckMap.addElement(check);
+			nodeCheckMap.put(nodePlusCheck, getNodeCheckMap);
+		}
+	}
+
+	/*
+	 * This method prints all nodes and checks related to a type
+	 */
+	private boolean check(String type) {
+		System.out.println("\nNodes that are of type : " + type);
+		boolean somethingFailed=false;
+		Vector<String> nodes = typeMap.get(type);
+		if (nodes == null) {
+			System.out.println("No "+type+" nodes found!");
+		} else {
+			for (String n : nodes) { 
+				System.out.println(n);
+				String nodePlusType = (n+"_"+type);
+				Vector<String> nodeChecks = nodeCheckMap.get(nodePlusType);
+				if (nodeChecks == null) {
+					System.out.println("No " + type + " checks found for " + n);
+				} else {
+					for (String c : nodeChecks) {
+						System.out.print(" + " + c);
+					 	String checkResult = doCheck(c);
+						if (!checkResult.equals("OK")) {
+							somethingFailed = true;
+							System.out.println("\n"+checkResult);
+						} else {
+							System.out.println(" ... OK");
+						}
+
+					}
+				}
+			}
+		}
+		if (somethingFailed) {
+			List<String> deps = typeDeps.get(type);
+			if (deps != null) {
+				for (String d : deps) {
+					System.out.println(" Depends on : " + d);
+					check(d);
+				}
+			}
+		}
+		return somethingFailed;
+	}
+
+	// Maps node_type to full checks
+	private Map<String,Vector<String>> nodeCheckMap;
+	// Maps type to nodes
 	private Map<String,Vector<String>> typeMap;
+	// Maps type to deps
 	private Map<String,List<String>> typeDeps;
+	// Maps node_check to special args (used at initialization)
 	private Map<String,String> argMap;
+	// Maps type to default checks (used at initialization)
 	private Map<String,List<String>> checkMap;
+	private BigInteger threads;
 	private String checkPath;
 	private ObjectFactory of;
 	private String confFile;
