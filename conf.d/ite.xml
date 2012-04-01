@@ -2,7 +2,9 @@
 <Site>
 	<name>ITE</name>
 	<checkpath>checks</checkpath>
-	<threads>8</threads>
+	<parallel_checks>8</parallel_checks>
+	<log_file>/tmp/foo.txt</log_file>
+	<log_level>WARNING</log_level>
 	<Nodes>
 		<node>
 			<name>Thor</name>
@@ -55,16 +57,23 @@
 		</node>
 		<node>
 			<name>Web</name>
-			<ip>62.103.124.7</ip>
-			<ip>194.0.185.35</ip>
+			<ip>62.103.124.28</ip>
+			<ip>62.103.124.29</ip>
+			<ip>194.0.185.28</ip>
+			<ip>194.0.185.29</ip>
 			<type>bestprice</type>
 			<type>pathfinder</type>
+			<checkargs>
+				<check>/usr/lib/nagios/plugins/check_http -I $h -H www.bestprice.gr</check>
+				<args>-w 0.5 -c 1 -m 40000:45000</args>
+			</checkargs>
+
 		</node>
 	</Nodes>
 
 	<Type>
 		<name>bestprice</name>
-		<check>/usr/lib/nagios/plugins/check_http -I $h -H www.bestprice.gr -w 0.2 -c 0.5</check>
+		<check>/usr/lib/nagios/plugins/check_http -I $h -H www.bestprice.gr</check>
 		<dependson>cds</dependson>
 	</Type>
 	<Type>
@@ -88,4 +97,5 @@
 		<check>check_procs $h</check>
 		<check>/home/gecko/Cascade/checks/check_users $h</check>
 	</Type>
+
 </Site>

@@ -3,7 +3,9 @@
 
 	<xs:element name="Site"> <xs:complexType> <xs:sequence>
 		<xs:element name="name" type="xs:string"/>
-		<xs:element name="threads" type="xs:integer" maxOccurs="1"/>
+		<xs:element name="parallel_checks" type="xs:integer" minOccurs="1" maxOccurs="1"/>
+		<xs:element name="log_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		<xs:element name="log_level" type="xs:string"/>
 		<xs:element name="checkpath" type="xs:string" minOccurs="1" maxOccurs="1"/>
 
 		<xs:element name="Nodes"> <xs:complexType> <xs:sequence>
@@ -11,6 +13,7 @@
 				<xs:element name="name" type="xs:string" minOccurs="1" maxOccurs="1"/>
 				<xs:element name="ip" type="xs:string" maxOccurs="unbounded"/>
 				<xs:element name="type" type="xs:string" maxOccurs="unbounded"/>
+				<xs:element name="top" type="xs:boolean"/>
 				<xs:element name="checkargs" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 					<xs:element name="check" type="xs:string"/>
 					<xs:element name="args" type="xs:string"/>
@@ -23,6 +26,16 @@
 			<xs:element name="check" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="dependson" type="xs:string" maxOccurs="unbounded"/>
 		</xs:sequence> </xs:complexType> </xs:element>
+
+		<xs:element name="Notification" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
+			<xs:element name="name" type="xs:string"/>
+			<xs:element name="days" type="xs:string"/>
+			<xs:element name="hours" type="xs:string"/>
+			<xs:element name="exclude" type="xs:string" maxOccurs="unbounded"/>
+			<xs:element name="warning_script" type="xs:string" maxOccurs="unbounded"/>
+			<xs:element name="error_script" type="xs:string" maxOccurs="unbounded"/>
+		</xs:sequence> </xs:complexType> </xs:element>
+
 
 	</xs:sequence></xs:complexType></xs:element>
 

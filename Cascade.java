@@ -5,6 +5,7 @@ import javax.xml.bind.*;
 import generated.*;
 import java.lang.Thread;
 import java.util.concurrent.*;
+import java.util.logging.*;
 
 class Cascade {
 	public static void main(String args[]) {
@@ -14,7 +15,6 @@ class Cascade {
 			System.exit(0);
 		}
 		myCascade.readXml(args[0]);
-		System.out.println("Initialization Complete\n\n\n");
 		myCascade.check("bestprice");
 		//myCascade.check("cds");
 	}
@@ -30,7 +30,7 @@ class Cascade {
 	}
 
 	private void printUsage() {
-		System.out.println("Usage: java Cascade <path_to_config>");
+		System.err.println("Usage: java Cascade <path_to_config>");
 	}
 	
 	/*
@@ -93,6 +93,19 @@ class Cascade {
 	}
         */
 
+	private void setupLogger(String fileName, String logLevel) {
+		try {
+			FileHandler fh = new FileHandler(fileName);
+			logger = Logger.getLogger("Cascade");
+			logger.setLevel(Level.CONFIG);
+			fh.setFormatter(new SimpleFormatter());
+			logger.setUseParentHandlers(false);
+			logger.addHandler(fh);
+		} catch (IOException e) {
+			System.err.println("Cannot create log file");
+			System.exit(1);
+		}
+	}
 
 	/*
 	 * This method parses an xml file and calls processType and processNode
@@ -103,34 +116,39 @@ class Cascade {
 			JAXBContext jc = JAXBContext.newInstance(Site.class);
 			Unmarshaller u = jc.createUnmarshaller();
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
-			System.out.println("Site Name : " +mySite.getName());
+
+			setupLogger(mySite.getLogFile(),mySite.getLogLevel());
+
+			logger.config("Site Name : " +mySite.getName());
 			checkPath = new String(mySite.getCheckpath());
 			if (!checkPath.substring(checkPath.length()-1,  checkPath.length()).equals("/")) {
 				checkPath = checkPath + "/";
 			}
-			System.out.println("checks path : " + checkPath);
+			logger.config("checks path : " + checkPath);
 
-			threads = mySite.getThreads().intValue();
-			System.out.println("threads : " + threads);
+			threads = mySite.getParallelChecks().intValue();
+			logger.config("threads : " + threads);
+
 			
-			//System.out.println("Processing Types and Checks definitions");
+			logger.fine("Processing Types and Checks definitions");
 			List<Site.Type> typeList  = new ArrayList<Site.Type>();
 			typeList = mySite.getType();
 			for (Site.Type s: typeList ) {
 				processType(s);
 			}
-			//System.out.println("Processing Types complete\n");
+			logger.fine("Processing Types complete\n");
 			
 
-			//System.out.println("Processing Nodes");
+			logger.fine("Processing Nodes");
 			Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
 			List<Site.Nodes.Node> nodes = new ArrayList<Site.Nodes.Node>();
 			nodes = nodeList.getNode();
 			for ( Site.Nodes.Node n : nodes ) {
 				processNode(n);
 			}
+			logger.info("Initialization Complete\n\n\n");
 		} catch (Exception fnfe) {
-			System.err.println(fnfe);
+			logger.severe(fnfe.getMessage());
 		}
 	}
 
@@ -149,7 +167,7 @@ class Cascade {
 	private void processType(Site.Type type) {
 
 		String typeName = type.getName();
-		System.out.println("\nType: " +typeName);
+		logger.config("\nType: " +typeName);
 
 		/*
 		 * This part deals with checks per typr
@@ -157,7 +175,7 @@ class Cascade {
 		List<String> typeChecks = new ArrayList<String>();
 		typeChecks = type.getCheck();
 		if (typeChecks.isEmpty()) {
-			System.out.println("Warning: No Checks Defined for Type: " + type.getName());
+			logger.warning("Warning: No Checks Defined for Type: " + type.getName());
 		} else {
 			checkMap.put(typeName, typeChecks);
 		}
@@ -165,7 +183,7 @@ class Cascade {
 		 * This just prints stuff
 		 */
 		for ( String chk : typeChecks) {
-			System.out.println(" + " + chk);
+			logger.config(" + " + chk);
 		}
 
 		/*
@@ -177,7 +195,7 @@ class Cascade {
 			typeDeps.put(typeName, typeDep);
 		}
 		for (String dep : typeDep) {
-			System.out.println(" +- Dependson: " + dep);
+			logger.config(" +- Dependson: " + dep);
 		}
 
 	}
@@ -204,7 +222,7 @@ class Cascade {
 		//List<String> nodeType = new ArrayList<String>();
 		String nodeName = node.getName();
 		List<String> nodeIPs = node.getIp();
-		System.out.println("\nNode: " + nodeName);
+		logger.config("\nNode: " + nodeName);
 
 		/*
 		 * This part deals with the custom arguments per check per node
@@ -233,7 +251,6 @@ class Cascade {
 					 */
 					if (!nodeTypeCheck.substring(0,1).equals("/")) {
 						nodeTypeCheck = checkPath+nodeTypeCheck;
-					//	System.out.println(" + " + nodeTypeCheck);
 					}
 					/*
 					 * Deal with special chars
@@ -243,17 +260,17 @@ class Cascade {
 					if (!nodeIPs.isEmpty()) {
 						for ( String ip : nodeIPs ) {
 							nodeTypeCheckModified=nodeTypeCheck.replaceAll("\\$h", ip);
-							System.out.println(" + " + nodeTypeCheckModified);
+							logger.config(" + " + nodeTypeCheckModified);
 							mapCheck(nodeName, nodeType, nodeTypeCheckModified);
 						}
 					} else {
 						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$h", nodeName);
-						System.out.println(" + " + nodeTypeCheck);
+						logger.config(" + " + nodeTypeCheck);
 						mapCheck(nodeName, nodeType, nodeTypeCheck);
 					}
 				}
 			} else {
-				System.out.println("Warning: Type not defined: " + nodeType);
+				logger.warning("Warning: Type not defined: " + nodeType);
 			}
 			Vector<String> getTypeMap = new Vector<String>();
 			getTypeMap = typeMap.get(nodeType);
@@ -261,7 +278,6 @@ class Cascade {
 				Vector<String> newTypeMap = new Vector<String>();
 				newTypeMap.addElement(nodeName);
 				typeMap.put(nodeType,newTypeMap);
-				//System.out.println("Added to typeMap : " + nodeType + " +- " + nodeName);
 			} else {
 				getTypeMap.addElement(nodeName);
 				typeMap.put(nodeType,getTypeMap);
@@ -280,7 +296,7 @@ class Cascade {
 			try {
 				process.waitFor();
 			} catch (InterruptedException e) {
-				System.out.println(e);
+				logger.severe(e.getMessage());
 			}
 			if (process.exitValue() == 0 ) {
 				return("OK");
@@ -314,7 +330,6 @@ class Cascade {
 		 * first part, maps to nodeCheckMap
 		 */
 		String nodePlusCheck = (node+"_"+type);
-		//System.out.println("putting into nodeCheckMap " + nodePlusCheck + " " + check);
 		Vector<String> getNodeCheckMap = new Vector<String>();
 		getNodeCheckMap = nodeCheckMap.get(nodePlusCheck);
 		if (getNodeCheckMap == null) {
@@ -329,7 +344,6 @@ class Cascade {
 		/*
 		 * Seconf part, maps to typeCheckMap
 		 */
-		//System.out.println("putting into typeCheckMap " + type + " " + check);
 		Vector<String> getTypeCheckMap = new Vector<String>();
 		getTypeCheckMap = typeCheckMap.get(type);
 		if (getTypeCheckMap == null) {
@@ -350,7 +364,7 @@ class Cascade {
 		boolean somethingFailed=false;
 		Vector<String> checks = typeCheckMap.get(type);
 		if (checks == null) {
-			System.out.println("No "+type+" checks found!");
+			logger.info("No "+type+" checks found!");
 		} else {
 			int checksCount = checks.size();
 			ExecutorService executor = Executors.newFixedThreadPool(threads);
@@ -365,10 +379,13 @@ class Cascade {
 					String threadOutput = future.get();
 					if (!threadOutput.equals("OK")) {
 						somethingFailed=true;
+						logger.warning("NOT OK: Will check any dependancies");
+						logger.warning(threadOutput);
+					} else {
+						logger.info(threadOutput);
 					}
-					System.out.println(threadOutput);
 				} catch (Exception e) {
-					System.out.println(e);
+					logger.severe(e.getMessage());
 				}
 			}
 			executor.shutdown();
@@ -377,7 +394,7 @@ class Cascade {
 			List<String> deps = typeDeps.get(type);
 			if (deps != null) {
 				for (String d : deps) {
-					System.out.println(" Depends on : " + d);
+					logger.info(" Depends on : " + d);
 					check(d);
 				}
 			}
@@ -402,7 +419,7 @@ class Cascade {
 				try {
 					process.waitFor();
 				} catch (InterruptedException e) {
-					System.out.println(e);
+					System.err.println(e.getMessage());
 				}
 				if (process.exitValue() == 0 ) {
 					return new String("OK");
@@ -439,5 +456,5 @@ class Cascade {
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
-
+	private Logger logger;
 }
