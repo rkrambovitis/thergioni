@@ -37,66 +37,6 @@ class Cascade {
 	}
 	
 	/*
-	 * Old methods, not currently used
-	 */
-	/*
-	private void parseFile(String firstArg) {
-		confFile=new String(firstArg);
-		try {
-			String strLine;
-			BufferedReader in = new BufferedReader(new FileReader(confFile));
-			while ((strLine = in.readLine()) != null) {
-				System.out.println(strLine);
-			}
-			in.close();
-		} catch (IOException e) {
-			System.err.println(e);
-		}
-	}
-
-	private void doXmlStuff() {
-		//Service whatever = of.createService();
-		//whatever.setName("asd");
-		//System.out.println(whatever.getName());
-		//printXml(whatever);
-		//unMarshal("/home/noc/cascade/conf.d/foo.xml");
-		File xmlFiles[] = getFiles(this.confPath);
-		for (File f : xmlFiles) {
-			String fileName=f.getName();
-			if (fileName.substring(fileName.length()-4,fileName.length()) == ".xml") 
-				System.out.println(fileName);
-			//readXml(confPath+f.getName());
-		}
-	}
-
-	private File[] getFiles(String path) {
-		try {
-			File files[] = new File(path).listFiles();
-			//for (File f : files) {
-			//	System.out.println(f.getName());
-			//}
-			return files;
-		} catch (Exception e) {
-			System.out.println(path + "is not a valid directory");
-			System.err.println(e);
-			System.exit(1);
-		}
-		return null;
-	}
-
-	private void printXml(Site.Type printMe) {
-		try {
-			//JAXBElement<Service> gl = of.createService(printMe);
-			JAXBContext jc = JAXBContext.newInstance("Type");
-			Marshaller m = jc.createMarshaller();
-			m.marshal( printMe, System.out );
-		} catch( JAXBException jbe ){
-			System.err.println(jbe);
-		}
-	}
-        */
-
-	/*
 	 * This method does excactly what is says on the tin
 	 */
 	private void setupLogger(String fileName, String logLevel) {
@@ -315,37 +255,6 @@ class Cascade {
 			}
 		}
 	}
-
-	/*
-	 * This method executes a check.
-	 * It prints the check output (from stdout)
-	 * It prints the return code (i.e. 0)
-	 * No longer used (see threading)
-	 */
-	/*
-	private String doCheck(String check) {
-		try {
-			Process process = Runtime.getRuntime().exec(check);
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				logger.severe(e.getMessage());
-			}
-			if (process.exitValue() == 0 ) {
-				return("OK");
-			} else {
-				InputStream stdin = process.getInputStream();
-				BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
-				String line = is.readLine();
-				is.close();
-				return(line);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-	*/
 	/*
 	 * This method adds items to a map that contains all checks.
 	 * The form of data in the map is like this:
