@@ -7,7 +7,7 @@
 		<xs:element name="log_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="log_level" type="xs:string"/>
 		<xs:element name="check_timeout" type="xs:integer"/>
-		<xs:element name="main_loop_pause_ms" type="xs:integer"/>
+		<xs:element name="main_loop_pause" type="xs:integer"/>
 		<xs:element name="checkpath" type="xs:string" minOccurs="1" maxOccurs="1"/>
 
 		<xs:element name="Nodes"> <xs:complexType> <xs:sequence>

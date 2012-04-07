@@ -4,11 +4,9 @@
 	<checkpath>checks</checkpath>
 	<parallel_checks>8</parallel_checks>
 	<log_file>/tmp/foo.txt</log_file>
-	<!--
-	<log_level>all</log_level> 
-	<check_timeout>5</check_timeout>
-	<main_loop_pause_ms>5000</main_loop_pause_ms> 
-	-->
+	<log_level>info</log_level> 
+	<check_timeout>3</check_timeout>
+	<main_loop_pause>20</main_loop_pause> 
 	<Nodes>
 		<node>
 			<name>Thor</name>
@@ -19,7 +17,7 @@
 			<type>cds</type>
 			<type>mysql</type>
 			<checkargs>
-				<check>check_nrpe -H $h -c check_mysql</check>
+				<check>$cp/check_nrpe -H $h -c check_mysql</check>
 				<args>-P 3310 -t slave</args>
 			</checkargs>
 		</node>
@@ -33,7 +31,7 @@
 			<type>cds</type>
 			<type>rpc</type>
 			<checkargs>
-				<check>check_rpc</check>
+				<check>$cp/check_rpc</check>
 				<args>-P 1234 -h $h</args>
 			</checkargs>
 		</node>
@@ -70,7 +68,7 @@
 			<type>pathfinder</type>
 			<checkargs>
 				<check>/usr/lib/nagios/plugins/check_http -I $h -H www.bestprice.gr</check>
-				<args>-w 0.5 -c 1 -m 40000:45000</args>
+				<args>-w 1 -m 40000:45000</args>
 			</checkargs>
 
 		</node>
@@ -84,11 +82,11 @@
 	</Type>
 	<Type>
 		<name>cds</name>
-		<check>check_cds $h</check>
+		<check>$cp/check_cds $h</check>
 	</Type>
 	<Type>
 		<name>rpc</name>
-		<check>check_rpc</check>
+		<check>$cp/check_rpc</check>
 		<dependson>septera</dependson>
 	</Type>
 	<Type>
@@ -96,12 +94,18 @@
 	</Type>
 	<Type>
 		<name>mysql</name>
-		<check>check_nrpe -H $h -c check_mysql</check>
+		<check>$cp/check_nrpe -H $h -c check_mysql</check>
 	</Type>
 	<Type>
 		<name>linux</name>
-		<check>check_procs $h</check>
+		<check>$cp/check_procs $h</check>
 		<check>/home/gecko/Cascade/checks/check_users $h</check>
 	</Type>
 
+	<Notification>
+		<name>Robert</name>
+		<exclude>pathfinder</exclude>
+		<warning_script>$cp/send_email rkrambovitis@phaistosnetworks.gr</warning_script>
+		<error_script>$cp/send_sms 6978945046</error_script>
+	</Notification>
 </Site>

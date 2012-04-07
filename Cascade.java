@@ -31,6 +31,9 @@ class Cascade {
 		nodeCheckMap = new HashMap<String,Vector<String>>();
 		typeCheckMap = new HashMap<String,Vector<String>>();
 		topTypes = new Vector<String>();
+		sentNotif = new HashMap<String,String>();
+		warnScripts = new Vector<String>();
+		errorScripts = new Vector<String>();
 	}
 
 	private void printUsage() {
@@ -45,13 +48,11 @@ class Cascade {
 			FileHandler fh = new FileHandler(fileName, 52428800, 2, true);
 			logger = Logger.getLogger("Cascade");
 			String lcll = logLevel.toLowerCase();
-			System.err.println(lcll);
 			if (lcll.equals("severe")) {
 				logger.setLevel(Level.SEVERE);
 			} else if  (lcll.equals("warning")) {
 				logger.setLevel(Level.WARNING);
 			} else if  (lcll.equals("info")) {
-				System.err.println("I am here");
 				logger.setLevel(Level.INFO);
 			} else if  (lcll.equals("config")) {
 				logger.setLevel(Level.CONFIG);
@@ -94,27 +95,31 @@ class Cascade {
 
 			logger.config("Site Name : " +mySite.getName());
 			checkPath = new String(mySite.getCheckpath());
+			/*
 			if (!checkPath.substring(checkPath.length()-1,  checkPath.length()).equals("/")) {
 				checkPath = checkPath + "/";
 			}
 			logger.config("checks path : " + checkPath);
+			*/
 
 			threads = mySite.getParallelChecks().intValue();
 			logger.config("threads : " + threads);
 
-			timeOut = mySite.getCheckTimeout().longValue();
-			if (timeOut == null) {
+
+			if (mySite.getCheckTimeout() == null) {
 				logger.warning("check_timeout not set, using default = 5");
 				timeOut=5L;
+			} else {
+				timeOut = mySite.getCheckTimeout().longValue();
 			}
 			logger.config("check timeout : " + timeOut);
 
-			pauseMs = mySite.getMainLoopPauseMs();
-			if (pauseMs == null) {
-				logger.warning("main_loop_pause_ms not set, using default = 60000");
-				pauseMs=new BigInteger("60000");
+			pause = mySite.getMainLoopPause();
+			if (pause == null) {
+				logger.warning("main_loop_pause not set, using default = 60");
+				pause=new BigInteger("60");
 			}
-			logger.config("Main loop pause time : " + pauseMs);
+			logger.config("Main loop pause time : " + pause);
 
 			logger.fine("Processing Types and Checks definitions");
 			List<Site.Type> typeList  = new ArrayList<Site.Type>();
@@ -132,9 +137,36 @@ class Cascade {
 			for ( Site.Nodes.Node n : nodes ) {
 				processNode(n);
 			}
+
+			logger.fine("Processing Notifications");
+			List<Site.Notification> notificationList = new ArrayList<Site.Notification>();//mySite.getNotification();
+			notificationList = mySite.getNotification();
+			for ( Site.Notification not : notificationList) {
+				processNotification(not);
+			}
+
 			logger.info("Initialization Complete\n");
+			argMap.clear();
+			checkMap.clear();
 		} catch (Exception fnfe) {
 			logger.severe(fnfe.getMessage());
+		}
+	}
+
+	private void processNotification(Site.Notification notification) {
+		logger.finer(notification.getName());
+		List<String> wrscr = notification.getWarningScript();
+		for (String w : wrscr) {
+			logger.config("Warning Script: " + w);
+			w=w.replaceAll("\\$cp", checkPath);
+			warnScripts.addElement(w);
+		}
+
+		List<String> erscr = notification.getErrorScript();
+		for (String e : erscr) {
+			logger.config("Error Script: " + e);
+			e=e.replaceAll("\\$cp", checkPath);
+			errorScripts.addElement(e);
 		}
 	}
 
@@ -236,12 +268,16 @@ class Cascade {
 					if (specialCheckArgs != null) {
 						nodeTypeCheck = nodeTypeCheck+" "+specialCheckArgs;
 					}
+
 					/*
 					 * Add checkPath
 					 */
+					/*
 					if (!nodeTypeCheck.substring(0,1).equals("/")) {
 						nodeTypeCheck = checkPath+nodeTypeCheck;
 					}
+					*/
+					nodeTypeCheck=nodeTypeCheck.replaceAll("\\$cp", checkPath);
 					/*
 					 * Deal with special chars
 					 * $h is for hostname (name in xml)
@@ -303,7 +339,7 @@ class Cascade {
 		}
 
 		/*
-		 * Seconf part, maps to typeCheckMap
+		 * Second part, maps to typeCheckMap
 		 */
 		Vector<String> getTypeCheckMap = new Vector<String>();
 		getTypeCheckMap = typeCheckMap.get(type);
@@ -319,20 +355,26 @@ class Cascade {
 
 	/*
 	 * This method deals with checks and threading.
+	 * Really needs commenting as it's messy
 	 * Mainly for testing.
 	 */
-	private void check(String type) {
+	private String check(String type, ExecutorService executor) {
 		boolean somethingFailed=false;
+		int[] results = new int[3];
+		results[0]=0;
+		results[1]=0;
+		results[2]=0;
+		String message = new String();
 		logger.info("Performing checks for " + type);
 		Vector<String> checks = typeCheckMap.get(type);
 		if (checks == null) {
 			logger.info("No "+type+" checks found!");
 		} else {
 			int checksCount = checks.size();
-			ExecutorService executor = Executors.newFixedThreadPool(threads);
 			List<Future<String>> list = new ArrayList<Future<String>>();
 			for ( String check : checks ) {
 				Callable<String> worker = new Checker(check);
+				logger.fine(check);
 				Future<String> submit = executor.submit(worker);
 				list.add(submit);
 			}
@@ -340,48 +382,97 @@ class Cascade {
 				try {
 					String threadOutput = future.get(timeOut, TimeUnit.SECONDS);
 					future.cancel(true);
-					if (!threadOutput.equals("OK")) {
+					String fdgt=threadOutput.substring(0,1);
+					if (fdgt.equals("0")) {
+						results[0]+=1;
+					} else if (fdgt.equals("1")) {
+						results[1]+=1;
+					} else {
+						results[2]+=1;
+					}
+
+					/*
+					if (!threadOutput.substring(0,1).equals("0")) {
 						if (!somethingFailed) {
 							somethingFailed=true;
 							logger.warning("NOT OK: dependancy check triggered");
+							logger.warning(threadOutput);
+						} else {
+							logger.info(threadOutput);
 						}
-						logger.warning(threadOutput);
+						if (message.equals("")) {
+							message = "type:"+type;
+						}
+						message = message + "\n" + threadOutput;
 					} else {
 						logger.info(threadOutput);
 					}
+					*/
 				} catch (Exception e) {
-					logger.warning("Check Timeout");
+					logger.warning("Check Timeout ");
+					//somethingFailed=true;
+					results[2]+=1;
 				}
 			}
-			executor.shutdown();
+			if (results[2] > 0) message = "Fail: "+results[2]+" ";
+			if (results[1] > 0) message = message + "Warn: "+results[1]+" ";
+			if (results[0] > 0) message = message + "OK: " + results[0];
 		}
-		if (somethingFailed) {
+		if ((results[1] > 0) || (results[2] > 0)) {
 			List<String> deps = typeDeps.get(type);
 			if (deps != null) {
 				for (String d : deps) {
 					logger.info(" ++ Depends on : " + d);
-					check(d);
+					message = message + "\n" + check(d, executor);
 				}
 			}
 		}
+		return message;
 	}
 
 
 	private void enterMainLoop() {
 		if (topTypes.size() == 0) {
-			logger.severe("ERROR: You must set at least 1 top level type");
-			System.err.println("ERROR: You must set at least 1 top level type");
+			logger.severe("ERROR: You must declare at least 1 <top> type in the config");
+			System.err.println("ERROR: You must declare at least 1 <top> type in the config");
 			System.exit(1);
 		}
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
+		String message = new String();
 		while (true) {
 			for (String top : topTypes) {
-				check(top);
+				message=check(top, executor);
+				dispatchNotification(top, message, executor);
 			}
 			try {
-				logger.fine("top checks complete, initiating sleep");
-				Thread.sleep(pauseMs.longValue());
+				logger.fine("top checks complete, initiating sleep for " + pause + " sec");
+				Thread.sleep(1000*pause.longValue());
 			} catch (InterruptedException e) {
 				logger.severe(e.getMessage());
+				executor.shutdown();
+			}
+		}
+	}
+
+	private void dispatchNotification(String type, String message, Executor executor) {
+		String mfc = message.substring(0,1);
+		String key = "F_"+type;
+		if (mfc.equals("F")) {
+			if (sentNotif.get(key) == null) {
+				sentNotif.put(key, message);
+				for (String s : errorScripts) {
+					Runnable r = new Notifier(s+" "+message);
+					executor.execute(r);		
+				}
+			}
+		} else if (mfc.equals("O")) {
+			if (sentNotif.get(key) != null) {
+				sentNotif.remove(key);
+			}
+		} else {
+			for (String s : warnScripts) {
+				Runnable r = new Notifier(s+" "+message);
+				executor.execute(r);
 			}
 		}
 	}
@@ -400,20 +491,19 @@ class Cascade {
 		public String call() {
 			try {
 				Process process = Runtime.getRuntime().exec(check);
+				String line = new String();
 				try {
 					process.waitFor();
 				} catch (InterruptedException e) {
 					System.err.println(e.getMessage());
 				}
-				if (process.exitValue() == 0 ) {
-					return new String("OK");
-				} else {
-					InputStream stdin = process.getInputStream();
-					BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
-					String line = is.readLine();
-					is.close();
-					return line;
-				}
+				line = process.exitValue() + " ";
+				InputStream stdin = process.getInputStream();
+				BufferedReader is = new BufferedReader(new InputStreamReader(stdin));
+				String result = is.readLine();
+				is.close();
+				line = line + result;
+				return line;
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -421,6 +511,26 @@ class Cascade {
 		}
 
 		private String check;
+	}
+
+	private static class Notifier implements Runnable {
+		public Notifier(String all){
+			note = new String(all);
+		}
+
+		public void run() {
+			try {
+				Process process = Runtime.getRuntime().exec(note);
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					System.err.println(e.getMessage());
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		private String note;
 	}
 
 	/*
@@ -453,11 +563,13 @@ class Cascade {
 		}
 	}
 
+	// Maps F_type 1
+	private Map<String,String> sentNotif;
 	// Maps type to all checks
 	private Map<String,Vector<String>> typeCheckMap;
 	// Maps node_type to full checks
 	private Map<String,Vector<String>> nodeCheckMap;
-	// Maps type to nodes
+	// Maps type to nodes (not actually used yet)
 	private Map<String,Vector<String>> typeMap;
 	// Maps type to deps
 	private Map<String,List<String>> typeDeps;
@@ -467,8 +579,10 @@ class Cascade {
 	private Map<String,List<String>> checkMap;
 	private int threads;
 	private String checkPath;
+	private Vector<String> warnScripts;
+	private Vector<String> errorScripts;
 	private Long timeOut;
-	private BigInteger pauseMs;
+	private BigInteger pause;
 	private ObjectFactory of;
 	private String confFile;
 	private String confPath;
