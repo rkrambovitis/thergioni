@@ -4,11 +4,24 @@
 	<xs:element name="Site"> <xs:complexType> <xs:sequence>
 		<xs:element name="name" type="xs:string"/>
 		<xs:element name="parallel_checks" type="xs:integer" minOccurs="1" maxOccurs="1"/>
+		<xs:element name="web_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		<xs:element name="web_config" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		<xs:element name="web_level" type="xs:string"/>
 		<xs:element name="log_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="log_level" type="xs:string"/>
 		<xs:element name="check_timeout" type="xs:integer"/>
 		<xs:element name="main_loop_pause" type="xs:integer"/>
+		<xs:element name="main_loop_extra_random_pause" type="xs:integer"/>
 		<xs:element name="checkpath" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		<!-- obsolete
+		<xs:element name="warning_thresh" type="xs:integer"/>
+		<xs:element name="error_thresh" type="xs:integer"/>
+		-->
+		<xs:element name="total_thresh_warn" type="xs:integer"/>
+		<xs:element name="total_thresh_error" type="xs:integer"/>
+		<xs:element name="notif_thresh" type="xs:integer"/>
+		<xs:element name="notif_repeat" type="xs:integer"/>
+		<xs:element name="notif_flap_buffer" type="xs:integer"/>
 
 		<xs:element name="Nodes"> <xs:complexType> <xs:sequence>
 			<xs:element name="node" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
@@ -26,13 +39,23 @@
 			<xs:element name="name" type="xs:string"/>
 			<xs:element name="check" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="dependson" type="xs:string" maxOccurs="unbounded"/>
+			<xs:element name="broken_by" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="top" type="xs:boolean"/>
+			<xs:element name="warning_thresh" type="xs:integer"/>
+			<xs:element name="error_thresh" type="xs:integer"/>
+			<xs:element name="total_thresh_warn" type="xs:integer"/>
+			<xs:element name="total_thresh_error" type="xs:integer"/>
+			<xs:element name="notif_thresh" type="xs:integer"/>
+			<xs:element name="notif_repeat" type="xs:integer"/>
+			<xs:element name="notif_flap_buffer" type="xs:integer"/>
+			<xs:element name="long_output" type="xs:boolean"/>
 		</xs:sequence> </xs:complexType> </xs:element>
 
 		<xs:element name="Notification" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 			<xs:element name="name" type="xs:string"/>
 			<xs:element name="days" type="xs:string"/>
 			<xs:element name="hours" type="xs:string"/>
+			<xs:element name="default" type="xs:boolean"/>
 			<xs:element name="exclude" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="warning_script" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="error_script" type="xs:string" maxOccurs="unbounded"/>
