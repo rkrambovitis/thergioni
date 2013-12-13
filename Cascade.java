@@ -34,8 +34,8 @@ class Cascade {
 		sentWNotif = new HashMap<String,Integer>();
 		//warnScripts = new Vector<String>();
 		//errorScripts = new Vector<String>();
-		warnMap = new Map<String,Vector<String>>();
-		errorMap = new Map<String,Vector<String>>();
+		warnMap = new HashMap<String,Vector<String>>();
+		errorMap = new HashMap<String,Vector<String>>();
 		typeThresholds = new HashMap<String,int[]>();
 		lastNotif = new HashMap<String,Long>();
 		breakerMap = new HashMap<String,List<String>>();
@@ -256,23 +256,23 @@ class Cascade {
 	 * This method generates two vectors with all defined notification scripts.
 	 */
 	private void processNotification(Site.Notification notification) {
-		logger.config(notification.getName());
-		if (warnMap.containsKey(notification.getName()) {
+		logger.config("Notification group: "+notification.getName());
+		if (warnMap.containsKey(notification.getName())) {
 			logger.severe("ERROR: Duplicate notification name: "+notification.getName());
 			System.err.println("ERROR: Duplicate notification name: "+notification.getName());
 			System.exit(1);
 		}
-		if (Site.getDefault()) {
+		if (notification.isDefault()) {
 			if (defaultNotif.equals("")) {
 				defaultNotif = notification.getName();
 			} else {
 				logger.severe("ERROR: Only 1 default Notification block allowed: ("+defaultNotif+", "+notification.getName()+")");
-				System.err.println("ERROR: Only 1 default Notification block allowed: ("+defaultNotif+", "notification.getName()+")");
+				System.err.println("ERROR: Only 1 default Notification block allowed: ("+defaultNotif+", "+notification.getName()+")");
 				System.exit(1);
 			}
 		}
-		warnScripts = new Vector<String>();
-		errorScripts = new Vector<String>();
+		Vector<String> warnScripts = new Vector<String>();
+		Vector<String> errorScripts = new Vector<String>();
 		List<String> wrscr = notification.getWarningScript();
 		for (String w : wrscr) {
 			logger.config("Warning Script: " + w);
@@ -286,8 +286,8 @@ class Cascade {
 			e=e.replaceAll("\\$cp", checkPath);
 			errorScripts.addElement(e);
 		}
-		warnMap.add(notification.getName(), warnScripts);
-		errorMap.add(notification.getName(), errorScripts);
+		warnMap.put(notification.getName(), warnScripts);
+		errorMap.put(notification.getName(), errorScripts);
 	}
 
 	/*
@@ -955,8 +955,6 @@ class Cascade {
 	private int loopCount;
 	private int threadCount;
 	private String checkPath;
-	private Vector<String> warnScripts;
-	private Vector<String> errorScripts;
 	private Map<String,Vector<String>> warnMap;
 	private Map<String,Vector<String>> errorMap;
 	private Long timeOut;
@@ -970,5 +968,5 @@ class Cascade {
 	private Logger webConf;
 	private Vector<String> topTypes;
 	private Vector<String> longOutputTypes;
-	private String DefaultNotif;
+	private String defaultNotif;
 }
