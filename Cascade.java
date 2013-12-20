@@ -36,10 +36,12 @@ class Cascade {
 		//errorScripts = new Vector<String>();
 		warnMap = new HashMap<String,Vector<String>>();
 		errorMap = new HashMap<String,Vector<String>>();
+		notifyMap = new HashMap<String,List<String>>();
 		typeThresholds = new HashMap<String,int[]>();
 		lastNotif = new HashMap<String,Long>();
 		breakerMap = new HashMap<String,List<String>>();
-		defaultNotif = "";
+		defaultNotif = new ArrayList<String>();
+		rotMap = new HashMap<String,Rotater>();
 		loopCount=0;
 		threadCount=0;
 	}
@@ -207,6 +209,9 @@ class Cascade {
 			for ( Site.Notification not : notificationList) {
 				processNotification(not);
 			}
+			if (defaultNotif.size() == 0 ) {
+				logger.severe("No default Notification set !");
+			}
 
 			logger.fine("Dumping config to web file");
 			try {
@@ -232,6 +237,7 @@ class Cascade {
 	private void dumpType(String type) {
 		Vector<String> checks = typeCheckMap.get(type);
 		if (checks != null) {
+			webConf.warning("Checks: ");
 			for ( String check : checks ) {
 				webConf.config(check);
 			}
@@ -245,15 +251,26 @@ class Cascade {
 		}
 	}
 
+	private void dumpNotif(String type) {
+		if (notifyMap.containsKey(type)) {
+			for (String s : notifyMap.get(type)) {
+				webConf.warning("Notify: "+s);
+			}
+		} else {
+			webConf.warning("Notify: default");
+		}
+	}
+
 	private void dumpConf() {
 		for (String type : topTypes) {
 			webConf.severe("Top: "+type);
+			dumpNotif(type);
 			dumpType(type);
 		}
 	}
 
 	/*
-	 * This method generates two vectors with all defined notification scripts.
+	 * This method generates notifications
 	 */
 	private void processNotification(Site.Notification notification) {
 		logger.config("Notification group: "+notification.getName());
@@ -263,13 +280,7 @@ class Cascade {
 			System.exit(1);
 		}
 		if (notification.isDefault()) {
-			if (defaultNotif.equals("")) {
-				defaultNotif = notification.getName();
-			} else {
-				logger.severe("ERROR: Only 1 default Notification block allowed: ("+defaultNotif+", "+notification.getName()+")");
-				System.err.println("ERROR: Only 1 default Notification block allowed: ("+defaultNotif+", "+notification.getName()+")");
-				System.exit(1);
-			}
+			defaultNotif.add(notification.getName());
 		}
 		Vector<String> warnScripts = new Vector<String>();
 		Vector<String> errorScripts = new Vector<String>();
@@ -288,6 +299,26 @@ class Cascade {
 		}
 		warnMap.put(notification.getName(), warnScripts);
 		errorMap.put(notification.getName(), errorScripts);
+		
+		// NEW -> the rotation crap
+		Site.Notification.Rotation rot = notification.getRotation();
+		if (rot == null) {
+			logger.config("No rotation defined");
+		} else {
+			Rotater r = new Rotater("Admins", logger);
+			/*
+			r.setTime(rot.getTime());
+			r.setDay(rot.getDay());
+			r.setRemind(rot.getRemind());
+			r.setElevate(rot.isElevate());
+			r.setWarn(rot.getWarningScript());
+			r.setError(rot.getErrorScript());
+			List<Site.Notification.Rotation.OnCall> onCall = rot.getOnCall();
+			for (Site.Notification.Rotation.OnCall onc : onCall) {
+				r.setOnCall(new OnCall(onc.getName(), onc.getEmail(), onc.getNumber()));
+			}
+			*/
+		}	
 	}
 
 	/*
@@ -362,6 +393,21 @@ class Cascade {
 		if (type.isTop()) {
 			logger.config(" +++ : type " + typeName + " is top level");
 			topTypes.addElement(typeName);
+		}
+
+		/* 
+		 * This part deals with "notify" attribute.
+		 * It creates a list of "who to notify" if said type goes wrong.
+		 */
+		List<String> notifyList = new ArrayList<String>();
+		notifyList = type.getNotify();
+		if (!notifyList.isEmpty()) {
+			for (String tonot : notifyList) {
+				logger.config(" +++ : notify -> "+tonot);
+			}
+			notifyMap.put(typeName, notifyList);
+		} else {
+			logger.config(" +++ : notify -> default");
 		}
 		
 		/*
@@ -713,6 +759,12 @@ class Cascade {
 			lastWarn = 0L;
 		}
 		long timeNow = System.currentTimeMillis();
+		ArrayList<String> notifyGroups = new ArrayList<String>();
+		if (!notifyMap.containsKey(type)) {
+			notifyGroups.addAll(defaultNotif);
+		} else {
+			notifyGroups.addAll(notifyMap.get(type));	
+		}
 
 		if (mfc.equals("F")) {
 			long timeDiff = timeNow - lastMessage;
@@ -727,18 +779,18 @@ class Cascade {
 			//System.err.println(sn % notifRepeat);
 //			webLog.severe(mfc + " " + message);
 			if (sn % notifRepeat == notifThresh) {
-				//message=message+" count:"+sn;
 				message="\""+message+" count:"+sn+"\"";
 				if (sn == notifThresh && timeDiff <= defFlapBuffer) {
 					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
 					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
 				} else {
 					lastNotif.put(key,timeNow);
-					//for (String s : errorScripts) {
-					for (String s : errorMap.get(defaultNotif)) {
-						Runnable r = new Notifier(s+" "+message);
-						logger.info("Dispatching error notification " + s + " " + message);
-						executor.execute(r);		
+					for (String ng : notifyGroups) {
+						for (String s : errorMap.get(ng)) {
+							Runnable r = new Notifier(s+" "+message);
+							logger.info("Dispatching error notification " + s + " " + message);
+							executor.execute(r);		
+						}
 					}
 				}
 			}
@@ -759,11 +811,12 @@ class Cascade {
 					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
 				} else {
 					lastNotif.put(warnKey, timeNow);
-					//for (String s : warnScripts) {
-					for (String s : warnMap.get(defaultNotif)) {
-						Runnable r = new Notifier(s+" "+message);
-						logger.info("Dispatching warning notification" + s + " " + message);
-						executor.execute(r);		
+					for (String ng : notifyGroups) {
+						for (String s : warnMap.get(ng)) {
+							Runnable r = new Notifier(s+" "+message);
+							logger.info("Dispatching warning notification" + s + " " + message);
+							executor.execute(r);		
+						}
 					}
 				}
 			}
@@ -922,6 +975,63 @@ class Cascade {
 		}
 	}
 
+	private class Rotater {
+		public Rotater(String n, Logger logger) {
+			name = n;
+			logger.config("New Rotation for notification group "+n);
+		}
+		public void setWarn(List<String> w) {
+			//Do something
+		}
+		public void setError(List<String> e) {
+			//Do something
+		}
+		public void setTime(String t) {
+			//Do something
+		}
+		public void setDay(List<String> d) {
+			//Do something
+		}
+		public void setOnCall(OnCall onc) {
+			oncMap.put(onc.getName(), onc);
+		}
+		public void setRemind(List<String> rem) {
+			reminders = rem;
+		}
+		public void setElevate(boolean tof) {
+			elevate=tof;
+		}
+		public void setName(String foo) {
+			name = foo;
+		}
+		public String getName() {
+			return name;
+		}
+		private String name;
+		private boolean elevate;
+		private List<String> reminders;
+		private Map<String, OnCall> oncMap;
+	}
+	private class OnCall {
+		public OnCall(String nm, String em, String num) {
+			name=nm;
+			email=em;
+			number=num;
+		}
+		public String getName() {
+			return name;
+		}
+		public String getEmail() {
+			return email;
+		}
+		public String getNumber() {
+			return number;
+		}
+		private String name;
+		private String email;
+		private String number;
+	}
+
 	// Maps thresholds
 	private Map<String,int[]> typeThresholds;
 	// Maps F_type 1
@@ -957,6 +1067,7 @@ class Cascade {
 	private String checkPath;
 	private Map<String,Vector<String>> warnMap;
 	private Map<String,Vector<String>> errorMap;
+	private Map<String,List<String>> notifyMap;
 	private Long timeOut;
 	private BigInteger pause;
 	private BigInteger pauseExtra;
@@ -968,5 +1079,6 @@ class Cascade {
 	private Logger webConf;
 	private Vector<String> topTypes;
 	private Vector<String> longOutputTypes;
-	private String defaultNotif;
+	private List<String> defaultNotif;
+	private Map<String, Rotater> rotMap;
 }
