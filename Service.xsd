@@ -40,6 +40,7 @@
 			<xs:element name="check" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="dependson" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="broken_by" type="xs:string" maxOccurs="unbounded"/>
+			<xs:element name="notify" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="top" type="xs:boolean"/>
 			<xs:element name="warning_thresh" type="xs:integer"/>
 			<xs:element name="error_thresh" type="xs:integer"/>
@@ -53,12 +54,22 @@
 
 		<xs:element name="Notification" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 			<xs:element name="name" type="xs:string"/>
-			<xs:element name="days" type="xs:string"/>
-			<xs:element name="hours" type="xs:string"/>
 			<xs:element name="default" type="xs:boolean"/>
-			<xs:element name="exclude" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="warning_script" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="error_script" type="xs:string" maxOccurs="unbounded"/>
+			<xs:element name="rotation" maxOccurs="1"><xs:complexType> <xs:sequence>
+				<xs:element name="day" maxOccurs="unbounded" type="xs:string"/>
+				<xs:element name="time" type="xs:string" maxOccurs="1"/>
+				<xs:element name="remind" type="xs:string" maxOccurs="unbounded"/>
+				<xs:element name="error_script" type="xs:string" maxOccurs="unbounded"/>
+				<xs:element name="warning_script" type="xs:string" maxOccurs="unbounded"/>
+				<xs:element name="elevate" type="xs:boolean"/>
+				<xs:element name="on_call" maxOccurs="unbounded"><xs:complexType> <xs:sequence>
+					<xs:element name="name" minOccurs="1" maxOccurs="1" type="xs:string"/>
+					<xs:element name="email" maxOccurs="1" type="xs:string"/>
+					<xs:element name="number" maxOccurs="1" type="xs:string"/>
+				</xs:sequence> </xs:complexType> </xs:element>
+			</xs:sequence> </xs:complexType> </xs:element>
 		</xs:sequence> </xs:complexType> </xs:element>
 
 
