@@ -740,43 +740,47 @@ class Cascade {
 	 */
 	private void dispatchNotification(String type, String message, Executor executor) {
 		String mfc = message.substring(type.length()+1,type.length()+2);
-//		System.err.println("mfc=" + mfc + "\nmessage=" + message);
-		int notifThresh = typeThresholds.get(type)[2];
-		int notifRepeat = typeThresholds.get(type)[3];
-		String key = "F_"+type;
-		String warnKey = "W_"+type;
-		long lastMessage;
-		long lastWarn;
-		try {
-			lastMessage = lastNotif.get(key);
-		} catch (NullPointerException npe) {
-			lastMessage = 0L;
-		}
-		try {
-			lastWarn = lastNotif.get(warnKey);
-		} catch (NullPointerException npe) {
-			lastWarn = 0L;
-		}
-		long timeNow = System.currentTimeMillis();
-		ArrayList<String> notifyGroups = new ArrayList<String>();
-		if (!notifyMap.containsKey(type)) {
-			notifyGroups.addAll(defaultNotif);
+		if ((!mfc.equals("W"))&&(!mfc.equals("F"))) {
+			sentWNotif.remove("W_"+type);
+			sentFNotif.remove("F_"+type);
 		} else {
-			notifyGroups.addAll(notifyMap.get(type));	
-		}
-
-		if (mfc.equals("F")) {
-			long timeDiff = timeNow - lastMessage;
-			Integer sn = sentFNotif.get(key);
-			if (sn == null) {
-				sn=new Integer(1);
-				sentFNotif.put(key, sn);
-			} else {
+			int notifThresh = typeThresholds.get(type)[2];
+			int notifRepeat = typeThresholds.get(type)[3];
+			long lastMessage = 0l;
+			Integer sn = new Integer(0);
+			String key = new String();
+			if (mfc.equals("F"))
+				key="F_"+type;
+			else
+				key="W_"+type;
+			try {
+				lastMessage = lastNotif.get(key);
+			} catch (NullPointerException npe) {
+				lastMessage = 0L;
+			}
+			if (mfc.equals("F")) {
+				sn = sentFNotif.get(key);
+				if (sn == null)
+					sn=new Integer(0);
 				sentFNotif.put(key, ++sn);
 			}
+			else if (mfc.equals("W")) {
+				sn = sentWNotif.get(key);
+				if (sn == null)
+					sn=new Integer(0);
+				sentWNotif.put(key, ++sn);
+			}
+			long timeNow = System.currentTimeMillis();
+			long timeDiff = timeNow - lastMessage;
 			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+")");
-			//System.err.println(sn % notifRepeat);
-//			webLog.severe(mfc + " " + message);
+			ArrayList<String> notifyGroups = new ArrayList<String>();
+
+			if (!notifyMap.containsKey(type)) {
+				notifyGroups.addAll(defaultNotif);
+			} else {
+				notifyGroups.addAll(notifyMap.get(type));	
+			}
+
 			if (sn % notifRepeat == notifThresh) {
 				message="\""+message+" count:"+sn+"\"";
 				if (sn == notifThresh && timeDiff <= defFlapBuffer) {
@@ -784,49 +788,22 @@ class Cascade {
 					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
 				} else {
 					lastNotif.put(key,timeNow);
+					Vector<String> v = new Vector<String>();
 					for (String ng : notifyGroups) {
-						for (String s : errorMap.get(ng)) {
+						if (mfc.equals("F"))
+							v = errorMap.get(ng);
+						else
+							v = warnMap.get(ng);
+						if (rotMap.containsKey(ng))
+							logger.info("Rotation detected... Who's turn is it ... tun tun tuuuuun");
+						for (String s : v) {
 							Runnable r = new Notifier(s+" "+message);
-							logger.info("Dispatching error notification " + s + " " + message);
+							logger.info("Dispatching notification " + s + " " + message);
 							executor.execute(r);		
 						}
 					}
 				}
 			}
-		} else if (mfc.equals("W")) {
-			long timeDiff = timeNow - lastWarn;
-			Integer sn = sentWNotif.get(key);
-			if (sn == null) {
-				sn=new Integer(1);
-				sentWNotif.put(key, sn);
-			} else {
-				sentWNotif.put(key, ++sn);
-			}
-			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+")");
-//			webLog.warning(mfc + " " + message);
-			if (sn % notifRepeat == notifThresh) {
-				if (sn == notifThresh && timeDiff <= defFlapBuffer) {
-					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
-					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
-				} else {
-					lastNotif.put(warnKey, timeNow);
-					for (String ng : notifyGroups) {
-						for (String s : warnMap.get(ng)) {
-							Runnable r = new Notifier(s+" "+message);
-							logger.info("Dispatching warning notification" + s + " " + message);
-							executor.execute(r);		
-						}
-					}
-				}
-			}
-		} else if (mfc.equals("B")) {
-			//webLog.info(message);
-			sentWNotif.remove(key);
-			sentFNotif.remove(key);
-		} else {
-//			webLog.info(mfc + " " + message);
-			sentWNotif.remove(key);
-			sentFNotif.remove(key);
 		}
 	}
 
@@ -1002,6 +979,11 @@ class Cascade {
 			logger.config("+++ with number " +onc.getNumber());
 			oncMap.put(onc.getName(), onc);
 		}
+		public OnCall getOnCall() {
+			//This has to calculate who's turn it is. Or via thread + sleep etc keep track of who's turn it is.
+			long currentTime = System.currentTimeMillis();
+			
+		}
 		public void setRemind(List<String> rem) {
 			reminders = rem;
 		}
@@ -1019,6 +1001,7 @@ class Cascade {
 		private List<String> reminders;
 		private Map<String, OnCall> oncMap;
 	}
+
 	private class OnCall {
 		public OnCall(String nm, String em, String num) {
 			name=nm;
