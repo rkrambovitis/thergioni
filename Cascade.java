@@ -286,14 +286,14 @@ class Cascade {
 		Vector<String> errorScripts = new Vector<String>();
 		List<String> wrscr = notification.getWarningScript();
 		for (String w : wrscr) {
-			logger.config("Warning Script: " + w);
+			logger.config("+ Warning Script: " + w);
 			w=w.replaceAll("\\$cp", checkPath);
 			warnScripts.addElement(w);
 		}
 
 		List<String> erscr = notification.getErrorScript();
 		for (String e : erscr) {
-			logger.config("Error Script: " + e);
+			logger.config("+ Error Script: " + e);
 			e=e.replaceAll("\\$cp", checkPath);
 			errorScripts.addElement(e);
 		}
@@ -303,10 +303,9 @@ class Cascade {
 		// NEW -> the rotation crap
 		Site.Notification.Rotation rot = notification.getRotation();
 		if (rot == null) {
-			logger.config("No rotation defined");
+			logger.config("+ No rotation defined");
 		} else {
-			Rotater r = new Rotater("Admins", logger);
-			/*
+			Rotater r = new Rotater(notification.getName(), logger);
 			r.setTime(rot.getTime());
 			r.setDay(rot.getDay());
 			r.setRemind(rot.getRemind());
@@ -317,8 +316,8 @@ class Cascade {
 			for (Site.Notification.Rotation.OnCall onc : onCall) {
 				r.setOnCall(new OnCall(onc.getName(), onc.getEmail(), onc.getNumber()));
 			}
-			*/
-		}	
+			rotMap.put(r.getName(), r);
+		}
 	}
 
 	/*
@@ -978,21 +977,29 @@ class Cascade {
 	private class Rotater {
 		public Rotater(String n, Logger logger) {
 			name = n;
-			logger.config("New Rotation for notification group "+n);
+			oncMap = new HashMap<String,OnCall>();
+			logger.config("+ Rotation -> group "+n);
 		}
 		public void setWarn(List<String> w) {
+			logger.config("++ Setting warning to " +w);
 			//Do something
 		}
 		public void setError(List<String> e) {
+			logger.config("++ Setting error to " +e);
 			//Do something
 		}
 		public void setTime(String t) {
+			logger.config("++ Setting Time to " +t);
 			//Do something
 		}
 		public void setDay(List<String> d) {
+			logger.config("++ Setting Day to " +d);
 			//Do something
 		}
 		public void setOnCall(OnCall onc) {
+			logger.config("++ Adding onCall " +onc.getName());
+			logger.config("+++ with email " +onc.getEmail());
+			logger.config("+++ with number " +onc.getNumber());
 			oncMap.put(onc.getName(), onc);
 		}
 		public void setRemind(List<String> rem) {
