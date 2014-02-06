@@ -32,12 +32,14 @@ class Cascade {
 		longOutputTypes = new Vector<String>();
 		sentFNotif = new HashMap<String,Integer>();
 		sentWNotif = new HashMap<String,Integer>();
+		sentUNotif = new HashMap<String,Integer>();
 		//warnScripts = new Vector<String>();
 		//errorScripts = new Vector<String>();
 		warnMap = new HashMap<String,Vector<String>>();
 		errorMap = new HashMap<String,Vector<String>>();
 		notifyMap = new HashMap<String,List<String>>();
 		typeThresholds = new HashMap<String,int[]>();
+		accumMap = new HashMap<String, typeAccum>();
 		lastNotif = new HashMap<String,Long>();
 		breakerMap = new HashMap<String,List<String>>();
 		defaultNotif = new ArrayList<String>();
@@ -163,13 +165,53 @@ class Cascade {
 			}
 			logger.config("notification repeat : " + defNotifRepeat);
 
+			if (mySite.getUrgentThresh() == null) {
+				logger.warning("urgent_thresh not set, using default = 0");
+				defUrgentThresh=0;
+			} else {
+				defUrgentThresh = mySite.getUrgentThresh().intValue();
+			}
+			logger.config("urgent threshold : " + defUrgentThresh);
+
+			if (mySite.getAccumThreshWarn() == null) {
+				logger.warning("accum_thresh_warn not set, using default = 0 (disabled)");
+				defAccumThreshWarn=0;
+			} else {
+				defAccumThreshWarn = mySite.getAccumThreshWarn().intValue();
+			}
+			logger.config("accumulative theshold warning : " + defAccumThreshWarn);
+
+			if (mySite.getAccumThreshError() == null) {
+				logger.warning("accum_thresh_error not set, using default = 0 (disabled)");
+				defAccumThreshError=0;
+			} else {
+				defAccumThreshError = mySite.getAccumThreshError().intValue();
+			}
+			logger.config("accumulative theshold error : " + defAccumThreshError);
+
+			if (mySite.getAccumTimeWarn() == null) {
+				logger.warning("accum_time_error not set, using default = 60 (mins)");
+				defAccumTimeWarn=60;
+			} else {
+				defAccumTimeWarn = mySite.getAccumTimeWarn().intValue();
+			}
+			logger.config("accumulative time error (mins) : " + defAccumTimeWarn);
+
+			if (mySite.getAccumTimeError() == null) {
+				logger.warning("accum_time_error not set, using default = 60 (mins)");
+				defAccumTimeError=60;
+			} else {
+				defAccumTimeError = mySite.getAccumTimeError().intValue();
+			}
+			logger.config("accumulative time error (mins) : " + defAccumTimeError);
+
 			if (mySite.getNotifRepeat() == null) {
-				logger.warning("notif_flap_buffer not set, using default = 3600");
+				logger.warning("notif_flap_buffer not set, using default = 60 (mins)");
 				defFlapBuffer=3600000L;
 			} else {
-				defFlapBuffer = (1000*(mySite.getNotifFlapBuffer().longValue()));
+				defFlapBuffer = (60000*(mySite.getNotifFlapBuffer().longValue()));
 			}
-			logger.config("notification flapping buffer : " + (defFlapBuffer/1000) + "(sec)");
+			logger.config("notification flapping buffer : " + (defFlapBuffer/60000) + "(mins)");
 
 			pause = mySite.getMainLoopPause();
 			if (pause == null) {
@@ -417,8 +459,8 @@ class Cascade {
 		 * nr - number of failures after which is should notify again
 		 */
 
-		int wt, et, ttw, tte, nt, nr;
-		int[] thresholds = new int[4];
+		int ttw, tte, nt, nr, ut, atw, ate, atmw, atme;
+		int[] thresholds = new int[5];
 
 		try {
 			ttw = type.getTotalThreshWarn().intValue();
@@ -440,6 +482,31 @@ class Cascade {
 		} catch (NullPointerException npe) {
                         nr=defNotifRepeat;
                 }
+		try {
+			ut = type.getUrgentThresh().intValue();
+		} catch (NullPointerException npe) {
+                        ut=defUrgentThresh;
+                }
+		try {
+			atw = type.getAccumThreshWarn().intValue();
+		} catch (NullPointerException npe) {
+                        atw=defAccumThreshWarn;
+                }
+		try {
+			ate = type.getAccumThreshError().intValue();
+		} catch (NullPointerException npe) {
+                        ate=defAccumThreshError;
+                }
+		try {
+			atmw = type.getAccumTimeWarn().intValue();
+		} catch (NullPointerException npe) {
+                        atmw=defAccumTimeWarn;
+                }
+		try {
+			atme = type.getAccumTimeError().intValue();
+		} catch (NullPointerException npe) {
+                        atme=defAccumTimeError;
+                }
 
 		logger.config(" +- total threshold warning: " + ttw);
 		thresholds[0]=ttw;
@@ -449,7 +516,15 @@ class Cascade {
 		thresholds[2]=nt;
 		logger.config(" +- notification repeat: " + nr);
 		thresholds[3]=nr;
+		logger.config(" +- urgent threshold: " + ut);
+		thresholds[4]=ut;
+		logger.config(" +- accumulative threshold warning: " + atw);
+		logger.config(" +- accumulative threshold error: " + ate);
+		logger.config(" +- accumulative time warning: " + atmw + " (mins)");
+		logger.config(" +- accumulative time error: " + atme + " (mins)");
 		typeThresholds.put(typeName,thresholds);
+		accumMap.put(typeName, new typeAccum(atw, ate, atmw, atme));
+		
 
 	}
 
@@ -635,7 +710,9 @@ class Cascade {
 		}
 		int ttw = typeThresholds.get(type)[0];
 		int tte = typeThresholds.get(type)[1];
+		int ut = typeThresholds.get(type)[4];
 		message = type.toUpperCase() + "(";
+		if (ut > 0 && results[1] >= ut) message = message + "Urgent: ";
 		if (results[1] >= tte) message = message + "Failed: ";
 		else if (results[1] >= ttw) message = message + "Warning: ";
 		message = message + results[1]+"F/"+results[0]+"OK";
@@ -740,16 +817,19 @@ class Cascade {
 	 */
 	private void dispatchNotification(String type, String message, Executor executor) {
 		String mfc = message.substring(type.length()+1,type.length()+2);
-		if ((!mfc.equals("W"))&&(!mfc.equals("F"))) {
+		if ((!mfc.equals("W"))&&(!mfc.equals("F"))&&(!mfc.equals("U"))) {
 			sentWNotif.remove("W_"+type);
 			sentFNotif.remove("F_"+type);
+			sentUNotif.remove("U_"+type);
 		} else {
 			int notifThresh = typeThresholds.get(type)[2];
 			int notifRepeat = typeThresholds.get(type)[3];
 			long lastMessage = 0l;
 			Integer sn = new Integer(0);
 			String key = new String();
-			if (mfc.equals("F"))
+			if (mfc.equals("U"))
+				key="U_"+type;
+			else if (mfc.equals("F"))
 				key="F_"+type;
 			else
 				key="W_"+type;
@@ -758,7 +838,13 @@ class Cascade {
 			} catch (NullPointerException npe) {
 				lastMessage = 0L;
 			}
-			if (mfc.equals("F")) {
+			if (mfc.equals("U")) {
+				sn = sentUNotif.get(key);
+				if (sn == null)
+					sn=new Integer(0);
+				sentUNotif.put(key, ++sn);
+				notifThresh=1; // Urgent, send on 1st failure.
+			} else if (mfc.equals("F")) {
 				sn = sentFNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
@@ -781,7 +867,8 @@ class Cascade {
 				notifyGroups.addAll(notifyMap.get(type));	
 			}
 
-			if (sn % notifRepeat == notifThresh) {
+			short accum = accumMap.get(type).fail();
+			if ((sn % notifRepeat == notifThresh) || (accum > 0)) {
 				message="\""+message+" count:"+sn+"\"";
 				if (sn == notifThresh && timeDiff <= defFlapBuffer) {
 					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
@@ -790,12 +877,19 @@ class Cascade {
 					lastNotif.put(key,timeNow);
 					Vector<String> v = new Vector<String>();
 					for (String ng : notifyGroups) {
-						if (mfc.equals("F"))
+						if (mfc.equals("F") || mfc.equals("U") || (accum == 2) )
 							v = errorMap.get(ng);
 						else
 							v = warnMap.get(ng);
-						if (rotMap.containsKey(ng))
+						if (rotMap.containsKey(ng)) {
 							logger.info("Rotation detected... Who's turn is it ... tun tun tuuuuun");
+							logger.info("turn -> " + rotMap.get(ng).getOnCall().getName());
+						}
+
+						if (accum > 1) {
+							message = "Accumulative Error for " + type + ": " + accumMap.get(type).getMessage(accum);
+						}
+							
 						for (String s : v) {
 							Runnable r = new Notifier(s+" "+message);
 							logger.info("Dispatching notification " + s + " " + message);
@@ -803,7 +897,7 @@ class Cascade {
 						}
 					}
 				}
-			}
+			} 
 		}
 	}
 
@@ -954,7 +1048,9 @@ class Cascade {
 	private class Rotater {
 		public Rotater(String n, Logger logger) {
 			name = n;
+			rotPerWeek = 0;
 			oncMap = new HashMap<String,OnCall>();
+			oncNames = new ArrayList<String>();
 			logger.config("+ Rotation -> group "+n);
 		}
 		public void setWarn(List<String> w) {
@@ -970,7 +1066,10 @@ class Cascade {
 			//Do something
 		}
 		public void setDay(List<String> d) {
-			logger.config("++ Setting Day to " +d);
+			for (String day : d) {
+				logger.config("++ Setting Day to " +day);
+			}
+			rotPerWeek = d.size();
 			//Do something
 		}
 		public void setOnCall(OnCall onc) {
@@ -978,11 +1077,28 @@ class Cascade {
 			logger.config("+++ with email " +onc.getEmail());
 			logger.config("+++ with number " +onc.getNumber());
 			oncMap.put(onc.getName(), onc);
+			oncNames.add(onc.getName());
 		}
 		public OnCall getOnCall() {
 			//This has to calculate who's turn it is. Or via thread + sleep etc keep track of who's turn it is.
 			long currentTime = System.currentTimeMillis();
-			
+			//long thisweek = date at Sunday 00:00 <-- Need to use this one. Then calculate from there.
+			long day = 86400000l;
+			long week = 604800000l;
+			long year = 31536000000l;
+			int days = (int)(currentTime / day);
+			int weeks = (int)(currentTime / week);
+			int years = (int)(currentTime / year);
+			int rotations = (int)(weeks * rotPerWeek);
+			int who = rotations % oncNames.size();
+			String onc = oncNames.get(who);
+			logger.info("Days since epoch: "+ days);
+			logger.info("Weeks since epoch: "+ weeks);
+			logger.info("Years since epoch: "+ years);
+			logger.info("Rotations (= weeks since epoch * rotPerWeek): "+ rotations);
+			logger.info("Rotations % oncall_Count "+ who);
+			logger.info("which is... " + onc);
+			return oncMap.get(onc);
 		}
 		public void setRemind(List<String> rem) {
 			reminders = rem;
@@ -1000,6 +1116,8 @@ class Cascade {
 		private boolean elevate;
 		private List<String> reminders;
 		private Map<String, OnCall> oncMap;
+		private List<String> oncNames;
+		private int rotPerWeek;
 	}
 
 	private class OnCall {
@@ -1022,12 +1140,82 @@ class Cascade {
 		private String number;
 	}
 
+	private class typeAccum {
+		public typeAccum(int atw, int ate, int atmw, int atme ) {
+			long timeNow = System.currentTimeMillis();
+			accThreshWarn = atw;
+			accThreshError = ate;
+			accTimeWarn = atmw*60000l;
+			accTimeError = atme*60000l;
+
+			tsWarn = timeNow;
+			tsErr = timeNow;
+			cntWarn = 0;
+			cntErr = 0;
+		}
+
+		public String getMessage(short f) {
+			String returnText = new String("Once upon a dog");
+			if (f == 1) {
+				returnText = cntWarn + " failed checks in last " + ((System.currentTimeMillis() - tsWarn)/60000l) +" mins.";
+			} else if (f == 2) {
+				returnText = cntErr + " failed checks in last " + ((System.currentTimeMillis() - tsErr)/60000l) +" mins.";
+			}
+			return returnText;
+		}
+
+		public short fail() {
+			short fail = 0;
+			long timeNow = System.currentTimeMillis();
+
+			if (accThreshWarn > 0) {
+				if ((timeNow - tsWarn) > accTimeWarn) {
+					tsWarn = timeNow;
+					cntWarn = 0;
+				}
+				cntWarn++;
+				if (cntWarn > accThreshWarn) {
+					fail = 1;
+					tsWarn = timeNow;
+					cntWarn = 0;
+				}
+			}
+
+			if (accThreshError > 0) {
+				if ((timeNow - tsErr) > accTimeError) {
+					tsErr = timeNow;
+					cntErr = 0;	
+				}
+				cntErr++;
+				if (cntErr > accThreshError) {
+					fail = 2;
+					tsErr = timeNow;
+					cntErr = 0;	
+				}
+			}
+
+			return fail;
+		}
+
+		private int accThreshWarn;
+		private int accThreshError;
+		private long accTimeWarn;
+		private long accTimeError;
+
+		private int cntWarn;
+		private int cntErr;
+		private long tsErr;
+		private long tsWarn;
+	}
+
 	// Maps thresholds
 	private Map<String,int[]> typeThresholds;
-	// Maps F_type 1
+	// Maps F_type
 	private Map<String,Integer> sentFNotif;
-	// Maps W_type 1
+	// Maps W_type
 	private Map<String,Integer> sentWNotif;
+	// Maps U_type
+	private Map<String,Integer> sentUNotif;
 	// Maps type to all checks
 	private Map<String,Vector<String>> typeCheckMap;
 	// Maps node_type to full checks
@@ -1050,6 +1238,11 @@ class Cascade {
 	private int defTotalThreshError;
 	private int defNotifThresh;
 	private int defNotifRepeat;
+	private int defUrgentThresh;
+	private int defAccumThreshWarn;
+	private int defAccumThreshError;
+	private int defAccumTimeWarn;
+	private int defAccumTimeError;
 	private Long defFlapBuffer;
 	private int threads;
 	private int loopCount;
@@ -1058,6 +1251,7 @@ class Cascade {
 	private Map<String,Vector<String>> warnMap;
 	private Map<String,Vector<String>> errorMap;
 	private Map<String,List<String>> notifyMap;
+	private Map<String,typeAccum> accumMap;
 	private Long timeOut;
 	private BigInteger pause;
 	private BigInteger pauseExtra;
