@@ -22,6 +22,11 @@
 		<xs:element name="notif_thresh" type="xs:integer"/>
 		<xs:element name="notif_repeat" type="xs:integer"/>
 		<xs:element name="notif_flap_buffer" type="xs:integer"/>
+		<xs:element name="urgent_thresh" type="xs:integer"/>
+		<xs:element name="accum_thresh_warn" type="xs:integer"/>
+		<xs:element name="accum_thresh_error" type="xs:integer"/>
+		<xs:element name="accum_time_warn" type="xs:integer"/>
+		<xs:element name="accum_time_error" type="xs:integer"/>
 
 		<xs:element name="Nodes"> <xs:complexType> <xs:sequence>
 			<xs:element name="node" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
@@ -50,6 +55,11 @@
 			<xs:element name="notif_repeat" type="xs:integer"/>
 			<xs:element name="notif_flap_buffer" type="xs:integer"/>
 			<xs:element name="long_output" type="xs:boolean"/>
+			<xs:element name="urgent_thresh" type="xs:integer"/>
+			<xs:element name="accum_thresh_warn" type="xs:integer"/>
+			<xs:element name="accum_thresh_error" type="xs:integer"/>
+			<xs:element name="accum_time_warn" type="xs:integer"/>
+			<xs:element name="accum_time_error" type="xs:integer"/>
 		</xs:sequence> </xs:complexType> </xs:element>
 
 		<xs:element name="Notification" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
