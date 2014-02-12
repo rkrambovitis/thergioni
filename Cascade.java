@@ -119,6 +119,7 @@ class Cascade {
 				setupLogger(mySite.getLogFile(),mySite.getLogLevel(),mySite.getWebFile());
 			}
 
+
 			logger.config("Site Name : " +mySite.getName());
 			checkPath = new String(mySite.getCheckpath());
 
@@ -356,7 +357,7 @@ class Cascade {
 			r.setError(rot.getErrorScript());
 			List<Site.Notification.Rotation.OnCall> onCall = rot.getOnCall();
 			for (Site.Notification.Rotation.OnCall onc : onCall) {
-				r.setOnCall(new OnCall(onc.getName(), onc.getEmail(), onc.getNumber()));
+				r.setOnCall(new OnCall(onc.getName(), onc.getEmail(), onc.getNumber(), onc.getXmpp()));
 			}
 			rotMap.put(r.getName(), r);
 		}
@@ -712,9 +713,15 @@ class Cascade {
 		int tte = typeThresholds.get(type)[1];
 		int ut = typeThresholds.get(type)[4];
 		message = type.toUpperCase() + "(";
-		if (ut > 0 && results[1] >= ut) message = message + "Urgent: ";
-		if (results[1] >= tte) message = message + "Failed: ";
-		else if (results[1] >= ttw) message = message + "Warning: ";
+		if ((ut > 0) && (results[1] >= ut)) {
+			message = message + "Urgent: ";
+		} else if (results[1] >= tte) {
+			message = message + "Failed: ";
+		} else if (results[1] >= ttw) {
+			message = message + "Warning: ";
+		} else if (results[1] >= 1) {
+			message = message + "Notice: ";
+		}
 		message = message + results[1]+"F/"+results[0]+"OK";
 		if (results[1] > 0 ) { 
 			failedOutput = failedOutput.substring(0,(failedOutput.length()-2));
@@ -773,6 +780,7 @@ class Cascade {
 		} else if (results[1] >= 1 ) {
 			webLog.info(longMessage);
 			logger.info(type +" "+ message);
+			logger.info(type +" Not warning or Error, but marking it down for cummulative");
 		}
 
 		return message;
@@ -817,7 +825,17 @@ class Cascade {
 	 */
 	private void dispatchNotification(String type, String message, Executor executor) {
 		String mfc = message.substring(type.length()+1,type.length()+2);
-		if ((!mfc.equals("W"))&&(!mfc.equals("F"))&&(!mfc.equals("U"))) {
+		short accum = 0;
+		if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("N")) {
+			accum = accumMap.get(type).fail();
+			logger.info("Accum -> " + type + " ("+ accum +") "+ accumMap.get(type).getMessage(accum));
+		}
+
+		if (mfc.equals("N") && (accum == 0)) {
+			sentWNotif.remove("W_"+type);
+                        sentFNotif.remove("F_"+type);
+                        sentUNotif.remove("U_"+type);
+		} else if ((!mfc.equals("W"))&&(!mfc.equals("F"))&&(!mfc.equals("U"))&&(!mfc.equals("N"))) {
 			sentWNotif.remove("W_"+type);
 			sentFNotif.remove("F_"+type);
 			sentUNotif.remove("U_"+type);
@@ -827,38 +845,40 @@ class Cascade {
 			long lastMessage = 0l;
 			Integer sn = new Integer(0);
 			String key = new String();
-			if (mfc.equals("U"))
-				key="U_"+type;
-			else if (mfc.equals("F"))
-				key="F_"+type;
-			else
-				key="W_"+type;
-			try {
-				lastMessage = lastNotif.get(key);
-			} catch (NullPointerException npe) {
-				lastMessage = 0L;
-			}
+
 			if (mfc.equals("U")) {
+				key="U_"+type;
 				sn = sentUNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentUNotif.put(key, ++sn);
 				notifThresh=1; // Urgent, send on 1st failure.
 			} else if (mfc.equals("F")) {
+				key="F_"+type;
 				sn = sentFNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentFNotif.put(key, ++sn);
-			}
-			else if (mfc.equals("W")) {
+			} else if (mfc.equals("W")) {
+				key="W_"+type;
 				sn = sentWNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentWNotif.put(key, ++sn);
+			} else if (accum == 1) {
+				key="AW_"+type;
+			} else if (accum == 2) {
+				key="AE_"+type;
 			}
+			try {
+				lastMessage = lastNotif.get(key);
+			} catch (NullPointerException npe) {
+				lastMessage = 0L;
+			}
+
 			long timeNow = System.currentTimeMillis();
 			long timeDiff = timeNow - lastMessage;
-			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+")");
+
 			ArrayList<String> notifyGroups = new ArrayList<String>();
 
 			if (!notifyMap.containsKey(type)) {
@@ -867,41 +887,61 @@ class Cascade {
 				notifyGroups.addAll(notifyMap.get(type));	
 			}
 
-			short accum = accumMap.get(type).fail();
-			if ((sn % notifRepeat == notifThresh) || (accum > 0)) {
-				message="\""+message+" count:"+sn+"\"";
-				if (sn == notifThresh && timeDiff <= defFlapBuffer) {
-					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
-					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
-				} else {
-					lastNotif.put(key,timeNow);
-					Vector<String> v = new Vector<String>();
-					for (String ng : notifyGroups) {
-						if (mfc.equals("F") || mfc.equals("U") || (accum == 2) )
-							v = errorMap.get(ng);
-						else
-							v = warnMap.get(ng);
-						if (rotMap.containsKey(ng)) {
-							logger.info("Rotation detected... Who's turn is it ... tun tun tuuuuun");
-							logger.info("turn -> " + rotMap.get(ng).getOnCall().getName());
-						}
 
-						if (accum > 1) {
-							message = "Accumulative Error for " + type + ": " + accumMap.get(type).getMessage(accum);
-						}
-							
-						for (String s : v) {
-							Runnable r = new Notifier(s+" "+message);
-							logger.info("Dispatching notification " + s + " " + message);
-							executor.execute(r);		
-						}
+			Vector<String> v = new Vector<String>();
+			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+")");
+
+			if ((sn % notifRepeat == notifThresh) || (accum >= 1) ) {
+				for (String ng : notifyGroups) {
+					short warnOrError=0;
+					if (mfc.equals("F") || mfc.equals("U") || accum == 2 ) {
+						v.addAll(errorMap.get(ng));
+						warnOrError=2;
+						logger.info("Error scripts...");
+					} else {
+						v.addAll(warnMap.get(ng));
+						warnOrError=1;
+						logger.info("Warning scripts...");
+					}
+
+					if (rotMap.containsKey(ng)) {
+						logger.info("Rotation detected... Who's turn is it ... tun tun tuuuuun");
+						OnCall o = rotMap.get(ng).getOnCall();
+						logger.info("turn -> " + o.getName());
+						v.addAll(rotMap.get(ng).getScripts(o, warnOrError));
 					}
 				}
-			} 
-		}
-	}
+			}
 
-	/*
+			if (timeDiff <= defFlapBuffer) {
+				if (sn == notifThresh) {
+					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
+					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
+				} else if (accum >=1) {
+					String foo = ( accum == 1) ? "Warning" : "Error" ;
+					webLog.info("Accumulative "+foo+": " + type + "(" + (timeDiff/1000) + " secs since last notification)");
+					logger.warning("Accumulative "+foo+": " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
+					accumMap.get(type).reset(accum);
+				}
+			} else {
+				if (sn % notifRepeat == notifThresh) {
+					message="\""+message+" count:"+sn+"\"";
+				} else if (accum >= 1) {
+					String foo = ( accum == 1) ? "Warning" : "Error" ;
+					message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
+					accumMap.get(type).reset(accum);
+				}
+				lastNotif.put(key,timeNow);
+				for (String s : v) {
+					Runnable r = new Notifier(s+" "+message);
+					logger.info("Dispatching notification " + s + " " + message);
+					executor.execute(r);		
+				}
+			}
+		}
+	} 
+
+/*
 	 * This class is used for threading.
 	 * The check name is given in the constructor
 	 * It returns null if the check returns OK
@@ -1049,55 +1089,114 @@ class Cascade {
 		public Rotater(String n, Logger logger) {
 			name = n;
 			rotPerWeek = 0;
+			rotTime = 12;
 			oncMap = new HashMap<String,OnCall>();
 			oncNames = new ArrayList<String>();
 			logger.config("+ Rotation -> group "+n);
+			warnScripts = new Vector<String>();
+			errorScripts = new Vector<String>();
 		}
-		public void setWarn(List<String> w) {
-			logger.config("++ Setting warning to " +w);
+	
+		public Vector<String> getWarn() {
+			return warnScripts;
+		}
+
+		public void setWarn(List<String> wrscr) {
+			for (String w : wrscr) {
+				w=w.replaceAll("\\$cp", checkPath);
+				logger.config("++ Warning Script: " + w);
+				warnScripts.addElement(w);
+			}
+		}
+
+		public Vector<String> getScripts(OnCall onc, short warnOrError) {
+			Vector<String> scripts = new Vector<String>(); 
+			Vector<String> op = new Vector<String>();
+
+			if (warnOrError == 1 )
+				scripts.addAll(warnScripts);
+			else
+				scripts.addAll(errorScripts);
+
+			for (String es : scripts) {
+				es=es.replaceAll("\\$name", onc.getName());
+				try {
+					es=es.replaceAll("\\$email", onc.getEmail());
+				} catch (NullPointerException npe) {
+					logger.warning("No Email set for "+onc.getName());
+				}
+				try {
+					es=es.replaceAll("\\$number", onc.getNumber());
+				} catch (NullPointerException npe) {
+					logger.warning("No Number set for "+onc.getName());
+				}
+				try {
+					es=es.replaceAll("\\$xmpp", onc.getXmpp());
+				} catch (NullPointerException npe) {
+					logger.warning("No xmpp set for "+onc.getName());
+				}
+				op.add(es);
+			}
+			return op;
+		}
+
+		public void setError(List<String> erscr) {
+			//logger.config("++ Setting warning to " +w);
 			//Do something
+			//List<String> wrscr = notification.getWarningScript();
+			for (String e : erscr) {
+				e=e.replaceAll("\\$cp", checkPath);
+				logger.config("++ Error Script: " + e);
+				errorScripts.addElement(e);
+			}
 		}
-		public void setError(List<String> e) {
-			logger.config("++ Setting error to " +e);
-			//Do something
-		}
-		public void setTime(String t) {
+
+		public void setTime(BigInteger t) {
 			logger.config("++ Setting Time to " +t);
-			//Do something
+			rotTime = t.intValue();
 		}
-		public void setDay(List<String> d) {
-			for (String day : d) {
-				logger.config("++ Setting Day to " +day);
+		public void setDay(List<BigInteger> d) {
+			rotDays = new TreeSet<Integer>();
+			for (BigInteger day : d) {
+				logger.config("++ Setting Day to " +day+ " (1=Sun)");
+				rotDays.add(day.intValue());
 			}
 			rotPerWeek = d.size();
-			//Do something
 		}
 		public void setOnCall(OnCall onc) {
 			logger.config("++ Adding onCall " +onc.getName());
-			logger.config("+++ with email " +onc.getEmail());
-			logger.config("+++ with number " +onc.getNumber());
+			logger.config("+++ with email " + onc.getEmail());
+			logger.config("+++ with number " + onc.getNumber());
+			logger.config("+++ with xmpp " + onc.getXmpp());
 			oncMap.put(onc.getName(), onc);
 			oncNames.add(onc.getName());
 		}
 		public OnCall getOnCall() {
 			//This has to calculate who's turn it is. Or via thread + sleep etc keep track of who's turn it is.
 			long currentTime = System.currentTimeMillis();
-			//long thisweek = date at Sunday 00:00 <-- Need to use this one. Then calculate from there.
-			long day = 86400000l;
 			long week = 604800000l;
-			long year = 31536000000l;
-			int days = (int)(currentTime / day);
 			int weeks = (int)(currentTime / week);
-			int years = (int)(currentTime / year);
 			int rotations = (int)(weeks * rotPerWeek);
-			int who = rotations % oncNames.size();
+
+			Calendar c = Calendar.getInstance();
+			int dayOfWeek = c.get(Calendar.DAY_OF_WEEK);
+			int hrOfDay = c.get(Calendar.HOUR_OF_DAY);
+			logger.fine("Day: " + dayOfWeek + " - hr: "+hrOfDay);
+
+			int rotThisWeek = rotDays.headSet(new Integer(dayOfWeek)).size();
+			if (rotDays.contains(dayOfWeek) && (hrOfDay >= rotTime))
+				rotThisWeek++;
+
+			int who = rotations % oncNames.size() + rotThisWeek;
+
 			String onc = oncNames.get(who);
-			logger.info("Days since epoch: "+ days);
-			logger.info("Weeks since epoch: "+ weeks);
-			logger.info("Years since epoch: "+ years);
-			logger.info("Rotations (= weeks since epoch * rotPerWeek): "+ rotations);
-			logger.info("Rotations % oncall_Count "+ who);
-			logger.info("which is... " + onc);
+			logger.fine("Weeks since epoch: "+ weeks);
+			String exc = (hrOfDay >= rotTime) ? "has" : "has not yet";
+			logger.fine("Rotation time "+ exc +" exceeded rotation hour ("+rotTime+")");
+			logger.fine("Rotations this week: "+rotThisWeek);
+			logger.fine("Rotations (= weeks since epoch * rotPerWeek + rotThisWeek): "+ rotations);
+			logger.fine("Rotations % oncall_Count "+ who);
+			logger.fine("which is... " + onc);
 			return oncMap.get(onc);
 		}
 		public void setRemind(List<String> rem) {
@@ -1118,10 +1217,14 @@ class Cascade {
 		private Map<String, OnCall> oncMap;
 		private List<String> oncNames;
 		private int rotPerWeek;
+		private int rotTime;
+		private SortedSet<Integer> rotDays;
+		private Vector<String> warnScripts;
+		private Vector<String> errorScripts;
 	}
 
 	private class OnCall {
-		public OnCall(String nm, String em, String num) {
+		public OnCall(String nm, String em, String num, String xmpp) {
 			name=nm;
 			email=em;
 			number=num;
@@ -1135,9 +1238,13 @@ class Cascade {
 		public String getNumber() {
 			return number;
 		}
+		public String getXmpp() {
+			return xmpp;
+		}
 		private String name;
 		private String email;
 		private String number;
+		private String xmpp;
 	}
 
 	private class typeAccum {
@@ -1145,6 +1252,12 @@ class Cascade {
 			long timeNow = System.currentTimeMillis();
 			accThreshWarn = atw;
 			accThreshError = ate;
+
+			disabled=false;
+
+			if ((atw == 0) && (ate == 0))
+				disabled=true;
+
 			accTimeWarn = atmw*60000l;
 			accTimeError = atme*60000l;
 
@@ -1155,17 +1268,25 @@ class Cascade {
 		}
 
 		public String getMessage(short f) {
-			String returnText = new String("Once upon a dog");
-			if (f == 1) {
-				returnText = cntWarn + " failed checks in last " + ((System.currentTimeMillis() - tsWarn)/60000l) +" mins.";
+			String returnText;
+			long timeNow = System.currentTimeMillis();
+			if (disabled) {
+				returnText = "Accum Checks Disabled";
+			} else if (f == 1) {
+				returnText = cntWarn + " failed checks in last " + ((timeNow - tsWarn)/60000l) +" mins.";
 			} else if (f == 2) {
-				returnText = cntErr + " failed checks in last " + ((System.currentTimeMillis() - tsErr)/60000l) +" mins.";
+				returnText = cntErr + " failed checks in last " + ((timeNow - tsErr)/60000l) +" mins.";
+			} else {
+				returnText = "Warn:" + cntWarn + " Err:" + cntErr;
 			}
 			return returnText;
 		}
 
 		public short fail() {
 			short fail = 0;
+			if (disabled)
+				return fail;
+
 			long timeNow = System.currentTimeMillis();
 
 			if (accThreshWarn > 0) {
@@ -1174,10 +1295,8 @@ class Cascade {
 					cntWarn = 0;
 				}
 				cntWarn++;
-				if (cntWarn > accThreshWarn) {
+				if (cntWarn >= accThreshWarn) {
 					fail = 1;
-					tsWarn = timeNow;
-					cntWarn = 0;
 				}
 			}
 
@@ -1187,14 +1306,23 @@ class Cascade {
 					cntErr = 0;	
 				}
 				cntErr++;
-				if (cntErr > accThreshError) {
+				if (cntErr >= accThreshError) {
 					fail = 2;
-					tsErr = timeNow;
-					cntErr = 0;	
 				}
 			}
 
 			return fail;
+		}
+
+		public void reset(short f) {
+			long timeNow = System.currentTimeMillis();
+			if (f == 1) {
+				tsWarn = timeNow;
+				cntWarn = 0;
+			} else if (f == 2) {
+				tsErr = timeNow;
+				cntErr = 0;	
+			}
 		}
 
 		private int accThreshWarn;
@@ -1206,6 +1334,8 @@ class Cascade {
 		private int cntErr;
 		private long tsErr;
 		private long tsWarn;
+
+		private boolean disabled;
 	}
 
 	// Maps thresholds
