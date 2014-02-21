@@ -894,7 +894,7 @@ class Cascade {
 			if ((sn % notifRepeat == notifThresh) || (accum >= 1) ) {
 				for (String ng : notifyGroups) {
 					short warnOrError=0;
-					if (mfc.equals("F") || mfc.equals("U") || accum == 2 ) {
+					if ((mfc.equals("F") && accum != 2)|| mfc.equals("U") || accum == 2 ) {
 						v.addAll(errorMap.get(ng));
 						warnOrError=2;
 						logger.info("Error scripts...");
@@ -1187,7 +1187,7 @@ class Cascade {
 			if (rotDays.contains(dayOfWeek) && (hrOfDay >= rotTime))
 				rotThisWeek++;
 
-			int who = rotations % oncNames.size() + rotThisWeek;
+			int who = (rotations + rotThisWeek) % oncNames.size();
 
 			String onc = oncNames.get(who);
 			logger.fine("Weeks since epoch: "+ weeks);
@@ -1224,10 +1224,11 @@ class Cascade {
 	}
 
 	private class OnCall {
-		public OnCall(String nm, String em, String num, String xmpp) {
+		public OnCall(String nm, String em, String num, String xm) {
 			name=nm;
 			email=em;
 			number=num;
+			xmpp=xm;
 		}
 		public String getName() {
 			return name;
