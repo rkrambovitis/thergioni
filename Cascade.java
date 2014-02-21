@@ -890,11 +890,12 @@ class Cascade {
 
 			Vector<String> v = new Vector<String>();
 			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+")");
+			boolean hitRepeatThresh = (sn % notifRepeat == notifThresh);
 
-			if ((sn % notifRepeat == notifThresh) || (accum >= 1) ) {
+			if ( hitRepeatThresh || (accum >= 1) ) {
 				for (String ng : notifyGroups) {
 					short warnOrError=0;
-					if ((mfc.equals("F") && accum != 2)|| mfc.equals("U") || accum == 2 ) {
+					if ((mfc.equals("F") && hitRepeatThresh) || mfc.equals("U") || accum == 2 ) {
 						v.addAll(errorMap.get(ng));
 						warnOrError=2;
 						logger.info("Error scripts...");
