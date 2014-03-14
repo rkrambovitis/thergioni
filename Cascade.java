@@ -659,7 +659,7 @@ class Cascade {
 	 * Really needs commenting as it's messy
 	 * Mainly for testing.
 	 */
-	private String check(String type, ExecutorService executor) {
+	private String check(String type, ExecutorService executor, boolean extraText) {
 		int[] results = new int[3];
 		results[0]=0;
 		results[1]=0;
@@ -713,16 +713,18 @@ class Cascade {
 		int tte = typeThresholds.get(type)[1];
 		int ut = typeThresholds.get(type)[4];
 		message = type.toUpperCase() + "(";
-		if ((ut > 0) && (results[1] >= ut)) {
-			message = message + "Urgent: ";
-		} else if (results[1] >= tte) {
-			message = message + "Failed: ";
-		} else if (results[1] >= ttw) {
-			message = message + "Warning: ";
-		} else if (results[1] >= 1) {
-			message = message + "Notice: ";
+		if (extraText) {
+			if ((ut > 0) && (results[1] >= ut)) {
+				message = message + "Urgent: ";
+			} else if (results[1] >= tte) {
+				message = message + "Failed: ";
+			} else if (results[1] >= ttw) {
+				message = message + "Warning: ";
+			} else if (results[1] >= 1) {
+				message = message + "Notice: ";
+			}
 		}
-		message = message + results[1]+"F/"+results[0]+"OK";
+		message = message + results[1]+"f/"+results[0]+"ok";
 		if (results[1] > 0 ) { 
 			failedOutput = failedOutput.substring(0,(failedOutput.length()-2));
 			longMessage = message + "(" + failedOutput+")";
@@ -741,7 +743,7 @@ class Cascade {
 			if (breakers != null) {
 				for (String b : breakers) {
 					logger.info(" ++ Broken by : " + b);
-					String breakerMessage = new String(check(b,executor));
+					String breakerMessage = new String(check(b, executor, true));
 					logger.warning(" ++ breaker result: " + breakerMessage);
 					String mfc = breakerMessage.substring(b.length()+1,b.length()+2);
 					//logger.info("MFC is: "+mfc);
@@ -756,14 +758,14 @@ class Cascade {
 				if (deps != null) {
 					for (String d : deps) {
 						logger.info(" ++ Depends on : " + d);
-						message = message + ", " + check(d, executor);
-						longMessage = longMessage + ", " + check(d, executor);
+						message = message + ", " + check(d, executor, false);
+						longMessage = longMessage + ", " + check(d, executor, false);
 					}
 				}
 			}
 		} else {
-			message = type.toUpperCase() + "(OK:"+ results[0]+")";
-			longMessage = type.toUpperCase() + "(OK:"+ results[0]+")";
+			message = type.toUpperCase() + "("+results[0]+"ok)";
+			longMessage = type.toUpperCase() + "("+ results[0]+"ok)";
 		}
 
 		
@@ -804,7 +806,7 @@ class Cascade {
 		long sleeper = 0l;
 		while (true) {
 			for (String top : topTypes) {
-				message=check(top, executor);
+				message=check(top, executor, true);
 				dispatchNotification(top, message, executor);
 			}
 			try {
@@ -925,14 +927,17 @@ class Cascade {
 					accumMap.get(type).reset(accum);
 				}
 			} else {
-				if (sn % notifRepeat == notifThresh) {
+				if ( hitRepeatThresh ) {
 					message="\""+message+" count:"+sn+"\"";
+					lastNotif.put(key,timeNow);
 				} else if (accum >= 1) {
 					String foo = ( accum == 1) ? "Warning" : "Error" ;
 					message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
 					accumMap.get(type).reset(accum);
+					lastNotif.put(key,timeNow);
+				} else {
+					return;
 				}
-				lastNotif.put(key,timeNow);
 				for (String s : v) {
 					Runnable r = new Notifier(s+" "+message);
 					logger.info("Dispatching notification " + s + " " + message);
