@@ -357,7 +357,7 @@ class Cascade {
 			r.setError(rot.getErrorScript());
 			List<Site.Notification.Rotation.OnCall> onCall = rot.getOnCall();
 			for (Site.Notification.Rotation.OnCall onc : onCall) {
-				r.setOnCall(new OnCall(onc.getName(), onc.getEmail(), onc.getNumber(), onc.getXmpp()));
+				r.setOnCall(new OnCall(onc.getName(), onc.getEmail(), onc.getNumber(), onc.getXmpp(), onc.isElevateOnly()));
 			}
 			rotMap.put(r.getName(), r);
 		}
@@ -891,8 +891,9 @@ class Cascade {
 
 
 			Vector<String> v = new Vector<String>();
-			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+")");
-			boolean hitRepeatThresh = (sn % notifRepeat == notifThresh);
+			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+" sn%repeat:"+sn%notifRepeat+")");
+			boolean hitRepeatThresh = ((sn % notifRepeat) == notifThresh);
+			logger.info("hitRepeatThresh: " + hitRepeatThresh);
 
 			if ( hitRepeatThresh || (accum >= 1) ) {
 				for (String ng : notifyGroups) {
@@ -900,18 +901,24 @@ class Cascade {
 					if ((mfc.equals("F") && hitRepeatThresh) || mfc.equals("U") || accum == 2 ) {
 						v.addAll(errorMap.get(ng));
 						warnOrError=2;
-						logger.info("Error scripts...");
+						logger.fine("Error scripts...");
 					} else {
 						v.addAll(warnMap.get(ng));
 						warnOrError=1;
-						logger.info("Warning scripts...");
+						logger.fine("Warning scripts...");
 					}
 
 					if (rotMap.containsKey(ng)) {
-						logger.info("Rotation detected... Who's turn is it ... tun tun tuuuuun");
-						OnCall o = rotMap.get(ng).getOnCall();
-						logger.info("turn -> " + o.getName());
-						v.addAll(rotMap.get(ng).getScripts(o, warnOrError));
+						logger.info("Rotation detected...");
+						if ( sn == notifThresh || !rotMap.get(ng).getElevate() ) {
+							OnCall o = rotMap.get(ng).getOnCall();
+							logger.info("turn -> " + o.getName());
+							v.addAll(rotMap.get(ng).getScripts(o, warnOrError));
+						} else {
+							logger.info("Repeat notification. Alerting everyone...");
+							v.addAll(rotMap.get(ng).getAllScripts(warnOrError));
+							logger.fine("Got Scripts: "+v.size());
+						}
 					}
 				}
 			}
@@ -920,29 +927,31 @@ class Cascade {
 				if (sn == notifThresh) {
 					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
 					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
+					return;
 				} else if (accum >=1) {
 					String foo = ( accum == 1) ? "Warning" : "Error" ;
 					webLog.info("Accumulative "+foo+": " + type + "(" + (timeDiff/1000) + " secs since last notification)");
 					logger.warning("Accumulative "+foo+": " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
 					accumMap.get(type).reset(accum);
-				}
-			} else {
-				if ( hitRepeatThresh ) {
-					message="\""+message+" count:"+sn+"\"";
-					lastNotif.put(key,timeNow);
-				} else if (accum >= 1) {
-					String foo = ( accum == 1) ? "Warning" : "Error" ;
-					message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
-					accumMap.get(type).reset(accum);
-					lastNotif.put(key,timeNow);
-				} else {
 					return;
 				}
-				for (String s : v) {
-					Runnable r = new Notifier(s+" "+message);
-					logger.info("Dispatching notification " + s + " " + message);
-					executor.execute(r);		
-				}
+			}
+
+			if ( hitRepeatThresh ) {
+				message="\""+message+" count:"+sn+"\"";
+				lastNotif.put(key,timeNow);
+			} else if (accum >= 1) {
+				String foo = ( accum == 1) ? "Warning" : "Error" ;
+				message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
+				accumMap.get(type).reset(accum);
+				lastNotif.put(key,timeNow);
+			} else {
+				return;
+			}
+			for (String s : v) {
+				Runnable r = new Notifier(s+" "+message);
+				logger.info("Dispatching notification " + s + " " + message);
+				executor.execute(r);		
 			}
 		}
 	} 
@@ -1098,6 +1107,7 @@ class Cascade {
 			rotTime = 12;
 			oncMap = new HashMap<String,OnCall>();
 			oncNames = new ArrayList<String>();
+			elevateNames = new ArrayList<String>();
 			logger.config("+ Rotation -> group "+n);
 			warnScripts = new Vector<String>();
 			errorScripts = new Vector<String>();
@@ -1141,8 +1151,59 @@ class Cascade {
 				} catch (NullPointerException npe) {
 					logger.warning("No xmpp set for "+onc.getName());
 				}
-				op.add(es);
+				if (es.contains("$name") || es.contains("$email") || es.contains("$number") || es.contains("$xmpp")) {
+					logger.warning("Skipping (unset var): " +es);
+				} else {
+					logger.info("Adding notification: "+es);
+					op.add(es);
+				}
 			}
+			return op;
+		}
+
+		public Vector<String> getAllScripts(short warnOrError) {
+			Vector<String> scripts = new Vector<String>(); 
+			Vector<String> op = new Vector<String>();
+
+			if (warnOrError == 1)
+				scripts.addAll(warnScripts);
+			else
+				scripts.addAll(errorScripts);
+
+			ArrayList<String> allNames = new ArrayList<String>();
+			allNames.addAll(oncNames);
+			allNames.addAll(elevateNames);
+			for (String oName : allNames) {
+				OnCall onc = oncMap.get(oName);
+				Vector<String> scriptClone = new Vector<String>();
+				scriptClone.addAll(scripts);
+				for (String es : scripts) {
+					es=es.replaceAll("\\$name", onc.getName());
+					try {
+						es=es.replaceAll("\\$email", onc.getEmail());
+					} catch (NullPointerException npe) {
+						logger.warning("No Email set for "+onc.getName());
+					}
+					try {
+						es=es.replaceAll("\\$number", onc.getNumber());
+					} catch (NullPointerException npe) {
+						logger.warning("No Number set for "+onc.getName());
+					}
+					try {
+						es=es.replaceAll("\\$xmpp", onc.getXmpp());
+					} catch (NullPointerException npe) {
+						logger.warning("No xmpp set for "+onc.getName());
+					}
+
+					if (es.contains("$name") || es.contains("$email") || es.contains("$number") || es.contains("$xmpp")) {
+						logger.warning("Skipping (unset var): " +es);
+					} else {
+						logger.info("Adding notification: "+es);
+						op.add(es);
+					}
+				}
+			}
+			logger.fine("Script count: " + op.size());
 			return op;
 		}
 
@@ -1174,8 +1235,12 @@ class Cascade {
 			logger.config("+++ with email " + onc.getEmail());
 			logger.config("+++ with number " + onc.getNumber());
 			logger.config("+++ with xmpp " + onc.getXmpp());
+			if (!onc.isElevateOnly()) {
+				oncNames.add(onc.getName());
+			} else {
+				elevateNames.add(onc.getName());
+			}
 			oncMap.put(onc.getName(), onc);
-			oncNames.add(onc.getName());
 		}
 		public OnCall getOnCall() {
 			//This has to calculate who's turn it is. Or via thread + sleep etc keep track of who's turn it is.
@@ -1211,17 +1276,24 @@ class Cascade {
 		public void setElevate(boolean tof) {
 			elevate=tof;
 		}
+		public boolean getElevate() {
+			logger.info("Elevation is " + elevate);
+			return elevate;
+		}
 		public void setName(String foo) {
 			name = foo;
 		}
 		public String getName() {
 			return name;
 		}
+
 		private String name;
 		private boolean elevate;
 		private List<String> reminders;
 		private Map<String, OnCall> oncMap;
+		private Map<String, OnCall> elevateMap;
 		private List<String> oncNames;
+		private List<String> elevateNames;
 		private int rotPerWeek;
 		private int rotTime;
 		private SortedSet<Integer> rotDays;
@@ -1230,11 +1302,12 @@ class Cascade {
 	}
 
 	private class OnCall {
-		public OnCall(String nm, String em, String num, String xm) {
+		public OnCall(String nm, String em, String num, String xm, boolean elvOnly) {
 			name=nm;
 			email=em;
 			number=num;
 			xmpp=xm;
+			elevateOnly=elvOnly;
 		}
 		public String getName() {
 			return name;
@@ -1248,10 +1321,14 @@ class Cascade {
 		public String getXmpp() {
 			return xmpp;
 		}
+		public boolean isElevateOnly() {
+			return elevateOnly;
+		}
 		private String name;
 		private String email;
 		private String number;
 		private String xmpp;
+		private boolean elevateOnly;
 	}
 
 	private class typeAccum {
