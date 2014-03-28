@@ -79,6 +79,7 @@
 					<xs:element name="email" maxOccurs="1" type="xs:string"/>
 					<xs:element name="number" maxOccurs="1" type="xs:string"/>
 					<xs:element name="xmpp" maxOccurs="1" type="xs:string"/>
+					<xs:element name="elevate_only" type="xs:boolean"/>
 				</xs:sequence> </xs:complexType> </xs:element>
 			</xs:sequence> </xs:complexType> </xs:element>
 		</xs:sequence> </xs:complexType> </xs:element>
