@@ -206,9 +206,9 @@ class Cascade {
 			}
 			logger.config("accumulative time error (mins) : " + defAccumTimeError);
 
-			if (mySite.getNotifRepeat() == null) {
-				logger.warning("notif_flap_buffer not set, using default = 60 (mins)");
-				defFlapBuffer=3600000L;
+			if (mySite.getNotifFlapBuffer() == null) {
+				logger.warning("notif_flap_buffer not set, using default = 10 (mins)");
+				defFlapBuffer=1200000L;
 			} else {
 				defFlapBuffer = (60000*(mySite.getNotifFlapBuffer().longValue()));
 			}
@@ -689,12 +689,16 @@ class Cascade {
 					future.cancel(true);
 				} catch (Exception e) {
 					logger.warning(e.toString());
+					int chkpos=list.indexOf(future);
+					String shortCheck=checks.get(chkpos).replaceAll(checkPath,"");
 					logger.warning("Check exceeded "+timeOut+" seconds");
+					//logger.warning("Check failed is index: "+list.indexOf(future));
+					//logger.warning("Check may be : " + checks.get(list.indexOf(future)));
 					//logger.warning(future.toString());
 					results[1]+=1;
 					//webLog.severe("timeout");
 					//webLog.severe(future.getCheck());
-					failedOutput=failedOutput+"timeout, ";
+					failedOutput=failedOutput+shortCheck+":timeout, ";
 					continue;
 				}
 				String fdgt=threadOutput.substring(0,1);
@@ -829,8 +833,12 @@ class Cascade {
 		String mfc = message.substring(type.length()+1,type.length()+2);
 		short accum = 0;
 		if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("N")) {
-			accum = accumMap.get(type).fail();
-			logger.info("Accum -> " + type + " ("+ accum +") "+ accumMap.get(type).getMessage(accum));
+			if (accumMap.get(type).isDisabled()) {
+				logger.fine("Accum -> disabled for "+type);
+			} else {
+				accum = accumMap.get(type).fail();
+				logger.info("Accum -> " + type + " ("+ accum +") "+ accumMap.get(type).getMessage(accum));
+			}
 		}
 
 		if (mfc.equals("N") && (accum == 0)) {
@@ -893,7 +901,7 @@ class Cascade {
 			Vector<String> v = new Vector<String>();
 			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+" sn%repeat:"+sn%notifRepeat+")");
 			boolean hitRepeatThresh = ((sn % notifRepeat) == notifThresh);
-			logger.info("hitRepeatThresh: " + hitRepeatThresh);
+			logger.fine("hitRepeatThresh: " + hitRepeatThresh);
 
 			if ( hitRepeatThresh || (accum >= 1) ) {
 				for (String ng : notifyGroups) {
@@ -1041,7 +1049,7 @@ class Cascade {
 		}
 
 		private String calcDate(long millisecs) {
-			SimpleDateFormat date_format = new SimpleDateFormat("MMM dd HH:mm");
+			SimpleDateFormat date_format = new SimpleDateFormat("MMM dd HH:mm:ss.S");
 			Date resultdate = new Date(millisecs);
 			return date_format.format(resultdate);
 		}
@@ -1407,6 +1415,10 @@ class Cascade {
 				tsErr = timeNow;
 				cntErr = 0;	
 			}
+		}
+
+		private boolean isDisabled() {
+			return disabled;
 		}
 
 		private int accThreshWarn;
