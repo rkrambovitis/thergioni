@@ -709,6 +709,7 @@ class Cascade {
 					results[1]+=1;
 					logger.warning(threadOutput.substring(2));
 					failedOutput=failedOutput+threadOutput.substring(2)+", ";
+					executor.execute(new Notifier(type, threadOutput.substring(2)));
 				}
 			}
 
@@ -832,7 +833,7 @@ class Cascade {
 	private void dispatchNotification(String type, String message, Executor executor) {
 		String mfc = message.substring(type.length()+1,type.length()+2);
 		short accum = 0;
-		if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("N")) {
+		if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("W")) {
 			if (accumMap.get(type).isDisabled()) {
 				logger.fine("Accum -> disabled for "+type);
 			} else {
@@ -974,11 +975,7 @@ class Cascade {
 		public Checker(String theCheck){
 			check = new String(theCheck);
 		}
-/*
-		public String getCheck() {
-			return check;
-		}
-*/
+
 		public String call() {
 			try {
 				Process process = Runtime.getRuntime().exec(check);
@@ -994,10 +991,6 @@ class Cascade {
 				String result = is.readLine();
 				is.close();
 				line = line + result;
-				//System.err.println(line);
-				//line = line + result + "\n(From check:" +check+")";
-
-
 				return line;
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -1014,6 +1007,10 @@ class Cascade {
 	private static class Notifier implements Runnable {
 		public Notifier(String all){
 			note = new String(all);
+		}
+
+		public Notifier(String type, String message){
+			note = new String("/home/system/Tools/Phaistos/emitEvent cascade.check."+type+" data:"+message.replaceAll(" ","_"));
 		}
 
 		public void run() {
