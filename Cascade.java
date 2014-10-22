@@ -30,9 +30,9 @@ class Cascade {
 		typeCheckMap = new HashMap<String,Vector<String>>();
 		topTypes = new Vector<String>();
 		longOutputTypes = new Vector<String>();
-		sentFNotif = new HashMap<String,Integer>();
-		sentWNotif = new HashMap<String,Integer>();
-		sentUNotif = new HashMap<String,Integer>();
+		sentNotif = new HashMap<String,Integer>();
+		//sentWNotif = new HashMap<String,Integer>();
+		//sentUNotif = new HashMap<String,Integer>();
 		//warnScripts = new Vector<String>();
 		//errorScripts = new Vector<String>();
 		warnMap = new HashMap<String,Vector<String>>();
@@ -683,22 +683,19 @@ class Cascade {
 				list.add(submit);
 				//logger.finest("Threaded total: "+ ++threadCount);
 			}
+			int et = 0;
 			for (Future<String> future : list) {
 				try {
-					threadOutput = future.get(timeOut, TimeUnit.SECONDS);
+					threadOutput = future.get(timeOut+et, TimeUnit.SECONDS);
 					future.cancel(true);
-				} catch (Exception e) {
+				} catch (TimeoutException|CancellationException|ExecutionException|InterruptedException e) {
 					logger.warning(e.toString());
 					int chkpos=list.indexOf(future);
 					String shortCheck=checks.get(chkpos).replaceAll(checkPath,"");
 					logger.warning("Check exceeded "+timeOut+" seconds");
-					//logger.warning("Check failed is index: "+list.indexOf(future));
-					//logger.warning("Check may be : " + checks.get(list.indexOf(future)));
-					//logger.warning(future.toString());
 					results[1]+=1;
-					//webLog.severe("timeout");
-					//webLog.severe(future.getCheck());
 					failedOutput=failedOutput+shortCheck+":timeout, ";
+					et++;
 					continue;
 				}
 				String fdgt=threadOutput.substring(0,1);
@@ -709,14 +706,18 @@ class Cascade {
 					results[1]+=1;
 					logger.warning(threadOutput.substring(2));
 					failedOutput=failedOutput+threadOutput.substring(2)+", ";
-					executor.execute(new Notifier(type, threadOutput.substring(2)));
+					executor.execute(new Notifier(type, threadOutput.substring(2), "failure"));
 				}
 			}
 
 		}
+		if (results[1] == 0)
+			return null;
+
 		int ttw = typeThresholds.get(type)[0];
 		int tte = typeThresholds.get(type)[1];
 		int ut = typeThresholds.get(type)[4];
+
 		message = type.toUpperCase() + "(";
 		if (extraText) {
 			if ((ut > 0) && (results[1] >= ut)) {
@@ -729,14 +730,12 @@ class Cascade {
 				message = message + "Notice: ";
 			}
 		}
+
 		message = message + results[1]+"f/"+results[0]+"ok";
-		if (results[1] > 0 ) { 
-			failedOutput = failedOutput.substring(0,(failedOutput.length()-2));
-			longMessage = message + "(" + failedOutput+")";
-		}
+		failedOutput = failedOutput.substring(0,(failedOutput.length()-2));
+		longMessage = message + "(" + failedOutput+")";
 		message = message +")";
 		longMessage = longMessage + ")";
-//			logger.warning(type+" w:"+results[1]+"/"+wt+", e:"+results[2]+"/"+et+", ttw="+ttw+", tte="+tte);
 
 		if (topTypes.contains(type)) {
 			message = message.substring(0,1).toUpperCase()+message.substring(1);
@@ -748,13 +747,16 @@ class Cascade {
 			if (breakers != null) {
 				for (String b : breakers) {
 					logger.info(" ++ Broken by : " + b);
-					String breakerMessage = new String(check(b, executor, true));
-					logger.warning(" ++ breaker result: " + breakerMessage);
-					String mfc = breakerMessage.substring(b.length()+1,b.length()+2);
-					//logger.info("MFC is: "+mfc);
-					if (mfc.equals("F")) {
-						message = type + " Broken by "+b;
-						longMessage = type + " Broken by "+b;
+					String breakerMessage = check(b, executor, true);
+					if (breakerMessage == null) {
+						logger.warning(" ++ breaker result: OK");
+					} else {
+						logger.warning(" ++ breaker result: " + breakerMessage);
+						String mfc = breakerMessage.substring(b.length()+1,b.length()+2);
+						if (mfc.equals("F")) {
+							message = type + " Broken by "+b;
+							longMessage = type + " Broken by "+b;
+						}
 					}
 				}
 			} 
@@ -763,15 +765,21 @@ class Cascade {
 				if (deps != null) {
 					for (String d : deps) {
 						logger.info(" ++ Depends on : " + d);
-						message = message + ", " + check(d, executor, false);
-						longMessage = longMessage + ", " + check(d, executor, false);
+						String depMessage = check(d, executor, false);
+						if (depMessage != null) {
+							message = message + ", " + depMessage;
+							longMessage = longMessage + ", " + depMessage;
+						}
 					}
 				}
 			}
+		}
+/*
 		} else {
 			message = type.toUpperCase() + "("+results[0]+"ok)";
 			longMessage = type.toUpperCase() + "("+ results[0]+"ok)";
 		}
+*/
 
 		
 		if (longOutputTypes.contains(type)) {
@@ -787,7 +795,7 @@ class Cascade {
 		} else if (results[1] >= 1 ) {
 			webLog.info(longMessage);
 			logger.info(type +" "+ message);
-			logger.info(type +" Not warning or Error, but marking it down for cummulative");
+			logger.info(type +" Not warning or Error, but marking it down for cumulative");
 		}
 
 		return message;
@@ -819,8 +827,9 @@ class Cascade {
 				logger.fine("top checks complete, initiating sleep for " + sleeper + " sec");
 				//logger.finest("loop iteration: "+ ++loopCount);
 				Thread.sleep(1000*sleeper);
-			} catch (InterruptedException e) {
+			} catch (Exception e) {
 				logger.severe(e.getMessage());
+				executor.execute(new Notifier(e.getStackTrace(), e.toString()));
 				executor.shutdown();
 				System.exit(1);
 			}
@@ -831,6 +840,28 @@ class Cascade {
 	 * stores which notifications have been sent, and sends new ones
 	 */
 	private void dispatchNotification(String type, String message, Executor executor) {
+		int notifThresh = typeThresholds.get(type)[2];
+		if (message == null) {
+			boolean recovery = false;
+			if (sentNotif.containsKey("W_"+type)) {
+				if (sentNotif.get("W_"+type) >= notifThresh)
+					recovery = true;
+				sentNotif.remove("W_"+type);
+			}
+			if (sentNotif.containsKey("F_"+type)) {
+				if (sentNotif.get("F_"+type) >= notifThresh)
+					recovery = true;
+				sentNotif.remove("F_"+type);
+			}
+			if (sentNotif.containsKey("U_"+type)) {
+				recovery = true;
+				sentNotif.remove("U_"+type);
+			}
+			if (recovery) {
+				notifyRecovery(type, executor);
+			}
+			return;
+		}
 		String mfc = message.substring(type.length()+1,type.length()+2);
 		short accum = 0;
 		if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("W")) {
@@ -843,15 +874,16 @@ class Cascade {
 		}
 
 		if (mfc.equals("N") && (accum == 0)) {
-			sentWNotif.remove("W_"+type);
-                        sentFNotif.remove("F_"+type);
-                        sentUNotif.remove("U_"+type);
+			sentNotif.remove("W_"+type);
+                        sentNotif.remove("F_"+type);
+                        sentNotif.remove("U_"+type);
+/*
 		} else if ((!mfc.equals("W"))&&(!mfc.equals("F"))&&(!mfc.equals("U"))&&(!mfc.equals("N"))) {
 			sentWNotif.remove("W_"+type);
 			sentFNotif.remove("F_"+type);
 			sentUNotif.remove("U_"+type);
+*/
 		} else {
-			int notifThresh = typeThresholds.get(type)[2];
 			int notifRepeat = typeThresholds.get(type)[3];
 			long lastMessage = 0l;
 			Integer sn = new Integer(0);
@@ -859,23 +891,23 @@ class Cascade {
 
 			if (mfc.equals("U")) {
 				key="U_"+type;
-				sn = sentUNotif.get(key);
+				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
-				sentUNotif.put(key, ++sn);
+				sentNotif.put(key, ++sn);
 				notifThresh=1; // Urgent, send on 1st failure.
 			} else if (mfc.equals("F")) {
 				key="F_"+type;
-				sn = sentFNotif.get(key);
+				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
-				sentFNotif.put(key, ++sn);
+				sentNotif.put(key, ++sn);
 			} else if (mfc.equals("W")) {
 				key="W_"+type;
-				sn = sentWNotif.get(key);
+				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
-				sentWNotif.put(key, ++sn);
+				sentNotif.put(key, ++sn);
 			} else if (accum == 1) {
 				key="AW_"+type;
 			} else if (accum == 2) {
@@ -965,6 +997,31 @@ class Cascade {
 		}
 	} 
 
+	private void notifyRecovery(String type, Executor executor) {
+
+		ArrayList<String> notifyGroups = new ArrayList<String>();
+		if (!notifyMap.containsKey(type)) {
+			notifyGroups.addAll(defaultNotif);
+		} else {
+			notifyGroups.addAll(notifyMap.get(type));	
+		}
+
+		Vector<String> v = new Vector<String>();
+		for (String ng : notifyGroups) {
+			v.addAll(warnMap.get(ng));
+			v.addAll(rotMap.get(ng).getAllScripts((short)1));// 1 is warning
+		}
+		String message = new String("Recovery: "+type);
+		for (String s : v) {
+			Runnable r = new Notifier(s+" "+message);
+			logger.info("Dispatching notification " + s + " " + message);
+			executor.execute(r);		
+		}
+		Runnable r = new Notifier(type, message, "recovery");
+		executor.execute(r);
+	}
+
+
 /*
 	 * This class is used for threading.
 	 * The check name is given in the constructor
@@ -972,12 +1029,16 @@ class Cascade {
 	 * Else it returns the 1st line of the output of the script
 	 */
 	private static class Checker implements Callable<String> {
-		public Checker(String theCheck){
+		public Checker( String theCheck ) {
 			check = new String(theCheck);
 		}
 
-		public String call() {
-			try {
+		public String getCheck() {
+			return check;
+		}
+
+		public String call() throws IOException {
+//			try {
 				Process process = Runtime.getRuntime().exec(check);
 				String line = new String();
 				try {
@@ -992,10 +1053,12 @@ class Cascade {
 				is.close();
 				line = line + result;
 				return line;
+/*
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			return null;
+*/
 		}
 
 		private String check;
@@ -1009,8 +1072,24 @@ class Cascade {
 			note = new String(all);
 		}
 
-		public Notifier(String type, String message){
-			note = new String("/home/system/Tools/Phaistos/emitEvent cascade.check."+type+" data:"+message.replaceAll(" ","_"));
+		public Notifier(String type, String message, String event){
+			note = new String("/home/system/Tools/Phaistos/emitEvent cascade."+event+"."+type+" data:"+message.replaceAll(" ","_"));
+		}
+
+		public Notifier(StackTraceElement[] stackTrace, String descr) {
+			note = new String("/home/system/Tools/Phaistos/emitEvent cascade.exception");
+			int frm=0;
+			for (StackTraceElement st : stackTrace) {
+				if (st.isNativeMethod())
+					continue;
+				note = note 
+					//+ " frame:" +frm 
+					+ " file:" +st.getFileName() 
+					+ " class:" +st.getClassName()
+					+ " method:" +st.getMethodName()
+					+ " line:" +st.getLineNumber()
+					+ " descr:" + descr.replaceAll(" ","_");
+			}
 		}
 
 		public void run() {
@@ -1434,11 +1513,11 @@ class Cascade {
 	// Maps thresholds
 	private Map<String,int[]> typeThresholds;
 	// Maps F_type
-	private Map<String,Integer> sentFNotif;
+	private Map<String,Integer> sentNotif;
 	// Maps W_type
-	private Map<String,Integer> sentWNotif;
+	//private Map<String,Integer> sentWNotif;
 	// Maps U_type
-	private Map<String,Integer> sentUNotif;
+	//private Map<String,Integer> sentUNotif;
 	// Maps type to all checks
 	private Map<String,Vector<String>> typeCheckMap;
 	// Maps node_type to full checks
