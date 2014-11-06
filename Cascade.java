@@ -858,6 +858,7 @@ class Cascade {
 				sentNotif.remove("U_"+type);
 			}
 			if (recovery) {
+				logger.warning("Recovery for type: "+type);
 				notifyRecovery(type, executor);
 			}
 			return;
@@ -1009,7 +1010,8 @@ class Cascade {
 		Vector<String> v = new Vector<String>();
 		for (String ng : notifyGroups) {
 			v.addAll(warnMap.get(ng));
-			v.addAll(rotMap.get(ng).getAllScripts((short)1));// 1 is warning
+			if (rotMap.containsKey(ng))
+				v.addAll(rotMap.get(ng).getAllScripts((short)1));// 1 is warning
 		}
 		String message = new String("Recovery: "+type);
 		for (String s : v) {
