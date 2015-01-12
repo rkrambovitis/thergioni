@@ -269,6 +269,9 @@ class Cascade {
 				System.exit(1);
 			}
 
+			logger.fine("Setting web status file path");
+			statusFilePath = new String(mySite.getWebStatus());
+
 			logger.info("Initialization Complete");
 			argMap.clear();
 			checkMap.clear();
@@ -309,6 +312,55 @@ class Cascade {
 			webConf.severe("Top: "+type);
 			dumpNotif(type);
 			dumpType(type);
+		}
+	}
+
+	private void dumpStatus() {
+		try {
+		Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(statusFilePath), "utf-8"));
+		writer.write("<html>\n\t<head>");
+		writer.write("\n\t\t<title>Status</title>");
+		//writer.write("\n\t\t<meta http-equiv=\"refresh\" content="+sleeper+">");
+		writer.write("\n\t\t<style>");
+		writer.write("\n\t\t\tdiv {");
+		writer.write("\n\t\t\t\ttext-align:center;");
+		writer.write("\n\t\t\t\tmargin:2 auto;");
+		writer.write("\n\t\t\t\twidth:99%;");
+		writer.write("\n\t\t\t}");
+		writer.write("\n\t\t</style>");
+		writer.write("\n\t</head>");
+		writer.write("\n\t<body>\n\n");
+
+		boolean somethingFailed=false;
+		for (String type : topTypes) {
+/*
+			short foo = accumMap.get(type).fail(false);
+			if (foo != 0 ) {
+				writer.write("<div style=\"background-color:chocolate;\">"+accumMap.get(type).getMessage()+"</div<\n");
+				somethingFailed=true;
+			}
+*/				
+			if (sentNotif.containsKey("U_"+type)) {
+				writer.write("<div style=\"background-color:crimson;\">"+type+": URGENT</div>\n");
+				somethingFailed=true;
+			} else if (sentNotif.containsKey("F_"+type)) {
+				writer.write("<div style=\"background-color:chocolate;\">"+type+": Failed</div>\n");
+				somethingFailed=true;
+			} else if (sentNotif.containsKey("W_"+type)) {
+				writer.write("<div style=\"background-color:bisque;\">"+type+": Warning</div>\n");
+				somethingFailed=true;
+			} else if (sentNotif.containsKey("N_"+type)) {
+				writer.write("<div style=\"background-color:antiquewhite;\">"+type+": Notice</div>\n");
+				somethingFailed=true;
+			}
+		}
+		if (!somethingFailed) {
+			writer.write("<div style=\"background-color:greenyellow;\">SUPER GREEN :)</div>\n");
+		}
+		writer.write("\n\t</body>\n</html>");
+		writer.close();
+		} catch (IOException e) {
+			logger.severe("Failed to write status page\n"+e);
 		}
 	}
 
@@ -821,6 +873,7 @@ class Cascade {
 			for (String top : topTypes) {
 				message=check(top, executor, true);
 				dispatchNotification(top, message, executor);
+				dumpStatus();
 			}
 			try {
 				sleeper = pause.longValue() + (long)(Math.random()*pauseExtra.longValue());
@@ -857,6 +910,9 @@ class Cascade {
 				recovery = true;
 				sentNotif.remove("U_"+type);
 			}
+			if (sentNotif.containsKey("N_"+type)) {
+				sentNotif.remove("N_"+type);
+			}
 			if (recovery) {
 				logger.warning("Recovery for type: "+type);
 				notifyRecovery(type, executor);
@@ -869,7 +925,7 @@ class Cascade {
 			if (accumMap.get(type).isDisabled()) {
 				logger.fine("Accum -> disabled for "+type);
 			} else {
-				accum = accumMap.get(type).fail();
+				accum = accumMap.get(type).fail(true);
 				logger.info("Accum -> " + type + " ("+ accum +") "+ accumMap.get(type).getMessage(accum));
 			}
 		}
@@ -878,6 +934,7 @@ class Cascade {
 			sentNotif.remove("W_"+type);
                         sentNotif.remove("F_"+type);
                         sentNotif.remove("U_"+type);
+			sentNotif.put("N_"+type, 0);
 /*
 		} else if ((!mfc.equals("W"))&&(!mfc.equals("F"))&&(!mfc.equals("U"))&&(!mfc.equals("N"))) {
 			sentWNotif.remove("W_"+type);
@@ -1452,7 +1509,7 @@ class Cascade {
 			return returnText;
 		}
 
-		public short fail() {
+		public short fail(boolean inc) {
 			short fail = 0;
 			if (disabled)
 				return fail;
@@ -1464,7 +1521,8 @@ class Cascade {
 					tsWarn = timeNow;
 					cntWarn = 0;
 				}
-				cntWarn++;
+				if (inc)
+					cntWarn++;
 				if (cntWarn >= accThreshWarn) {
 					fail = 1;
 				}
@@ -1475,7 +1533,8 @@ class Cascade {
 					tsErr = timeNow;
 					cntErr = 0;	
 				}
-				cntErr++;
+				if (inc)
+					cntErr++;
 				if (cntErr >= accThreshError) {
 					fail = 2;
 				}
@@ -1560,8 +1619,9 @@ class Cascade {
 	private BigInteger pause;
 	private BigInteger pauseExtra;
 	private ObjectFactory of;
-	private String confFile;
-	private String confPath;
+//	private String confFile;
+//	private String confPath;
+	private String statusFilePath;
 	private Logger logger;
 	private Logger webLog;
 	private Logger webConf;
