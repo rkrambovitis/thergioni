@@ -6,6 +6,7 @@
 		<xs:element name="parallel_checks" type="xs:integer" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_config" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		<xs:element name="web_status" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_level" type="xs:string"/>
 		<xs:element name="log_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="log_level" type="xs:string"/>
