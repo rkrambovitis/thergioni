@@ -11,7 +11,7 @@ import java.util.Date;
 
 class Thergioni {
 	public static void main(String args[]) {
-		Thergioni myiThergioni = new Thergioni();
+		Thergioni myThergioni = new Thergioni();
 		if (args.length == 0 ) {
 			myThergioni.printUsage();
 			System.exit(0);
