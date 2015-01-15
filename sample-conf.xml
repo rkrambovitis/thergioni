@@ -197,7 +197,7 @@
 		<name>web</name>
 		<check>$cp/check_http -h$h</check>
 		<top>true</top>
-	</type>
+	</Type>
 
 	<Nodes>
 		<node>
