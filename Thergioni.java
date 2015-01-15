@@ -758,7 +758,7 @@ class Thergioni {
 					results[1]+=1;
 					logger.warning(threadOutput.substring(2));
 					failedOutput=failedOutput+threadOutput.substring(2)+", ";
-					executor.execute(new Notifier(type, threadOutput.substring(2), "failure"));
+					//executor.execute(new Notifier(type, threadOutput.substring(2), "failure"));
 				}
 			}
 
@@ -1078,8 +1078,8 @@ class Thergioni {
 			logger.info("Dispatching notification " + s + " " + message);
 			executor.execute(r);		
 		}
-		Runnable r = new Notifier(type, message, "recovery");
-		executor.execute(r);
+		//Runnable r = new Notifier(type, message, "recovery");
+		//executor.execute(r);
 	}
 
 
