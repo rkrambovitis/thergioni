@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Site>
+	<name>MySite</name>
+
+	<!-- relative path for check scripts. Replaced $cp in the checks definitions -->
+	<checkpath>checks</checkpath>
+
+	<log_file>/tmp/thergioni.log</log_file>
+
+	<!-- FINEST FINER FINE CONFIG INFO WARNING SEVERE ALL -->
+	<log_level>CONFIG</log_level> 
+
+	<!-- A web file containing last check fault output. -->
+	<web_file>/tmp/thergioni_log.html</web_file>
+	
+	<!-- A web output of the config -->
+	<web_config>/home/noc/thergioni_conf.html</web_config>
+
+	<!-- A web file containing current status -->
+	<web_status>/home/noc/thergioni_status.html</web_status>
+
+	<!-- Max time to wait for a check to complete -->
+	<check_timeout>4</check_timeout>
+
+	<!-- how long to sleep (secs) before next check iteration -->
+	<main_loop_pause>25</main_loop_pause> 
+
+	<!-- Max extra time to sleep (sec)(random, 0 - X) -->
+	<main_loop_extra_random_pause>8</main_loop_extra_random_pause> 
+
+	<!-- Max check threads launched. -->
+	<!-- Note that after launching, the results are gathered linearly... yeah I know, gotta change this -->
+	<parallel_checks>8</parallel_checks>
+
+	<!-- How many (sum) failed checks trigger "warning" state -->
+	<total_thresh_warn>2</total_thresh_warn>
+
+	<!-- How many (sum) failed checks trigger "error" state -->
+	<total_thresh_error>3</total_thresh_error>
+
+	<!-- After how many consecutive warn / error states a notification is sent -->
+	<notif_thresh>3</notif_thresh>
+
+	<!-- After how many consecutive warn / failed states since sendfing notification, another one is sent -->
+	<notif_repeat>30</notif_repeat>
+
+	<!-- min time (mins) between sending "first" error/warning notifications. -->
+	<!-- i.e. if something fails, message sent, recovers, then fails again within short period, it will not send a new notification -->
+	<notif_flap_buffer>5</notif_flap_buffer>
+
+	<!-- accumulate warning / errors / notices that don't trigger warn / error state -->
+	<!-- If thresholds are breached, issue a notification -->
+	<!--
+	<accum_time_warn>60</accum_time_warn>
+	<accum_time_error>60</accum_time_error>
+	<accum_thresh_warn>5</accum_thresh_warn>
+	<accum_thresh_error>15</accum_thresh_error>
+	-->
+
+	<Notification>
+		<name>Admins</name>
+		<!-- This is the default notification group. (there can be only one) -->
+		<default>true</default>
+		<!-- The scripts to call if warn / error thresholds are breached -->
+		<!-- These are standard, regardless of rotation -->
+		<warning_script>$cp/send_email reports@thergioni.com</warning_script>
+		<warning_script>$cp/send_slack ops_spam</warning_script>
+
+		<error_script>$cp/send_email reports@thergioni.com</error_script>
+		<error_script>$cp/send_slack ops_notifications</error_script>
+
+		<rotation>
+			<!-- Day of week that rotation happens (can have more than 1) -->
+			<day>2</day>
+			<day>5</day>
+			<!-- Time of day that rotation happens -->
+			<time>12</time>
+			<!-- Not implemented -->
+			<remind>$cp/notify_oncall $email</remind>
+			<!-- Scripts in rotation are extra to the standard ones -->
+			<!-- Variables: $email $number $xmpp are replaced by the values defined per on_call -->
+			<error_script>$cp/send_sms $number</error_script>
+			<error_script>$cp/send_email $email</error_script>
+			<error_script>$cp/send_xmpp $xmpp</error_script>
+			<warning_script>$cp/send_xmpp $xmpp</warning_script>
+			<!-- If problem is not solved by 2nd alarm, then alert everyone in group -->
+			<elevate>true</elevate>
+
+			<on_call>
+				<name>robert</name>
+				<number>5551234</number>
+			</on_call>
+			<on_call>
+				<name>thergio</name>
+				<number>5554321</number> 
+			</on_call>
+
+			<on_call>
+				<name>mani</name>
+				<email>mani@thergioni.com</email>
+				<number>5551432</number>
+				<xmpp>mani</xmpp>
+				<!-- Do not consider for rotation. Only alert on elevate -->
+				<elevate_only>true</elevate_only>
+			</on_call>
+		</rotation>
+	</Notification>
+
+	<Type>
+		<!-- The name identifies the type -->
+		<name>important_service</name>
+		<!-- The check definition (you can have more than 1) -->
+		<!-- $cp is replaced by check_path as defined earlier -->
+		<!-- $h is replaced by the node name, or ip as defined in the nodes -->
+		<!-- Note that for multiple ip tags, multiple checks are setup (one per ip) -->
+		<check>$cp/check_http -h$h</check>
+
+		<!-- The top flag means this type will be checked at every iteration -->
+		<!-- If it's not a top type, it will only be checked if an other top type which is defined to depend on it -->
+		<top>true</top>
+
+		<!-- Long output prints the check output to the webfile when it fails -->
+		<!-- This is useful when the count alone is not enough to identify the problem -->
+		<!-- i.e. in the event that you have multiple ips and need to know which one is failing -->
+		<!--
+		<long_output>true</long_output>
+		-->
+
+		<!-- These override the default thresholds defined earlier specifically for items of this type -->
+		<!-- Setting Error lower than Warn means Warn will never be triggered -->
+		<!-- You can disable errors by setting the limit very high -->
+		<!--
+                <total_thresh_error>5</total_thresh_error>
+                <total_thresh_warn>3</total_thresh_warn>
+		-->
+
+		<!-- override defaults
+                <notif_thresh>6</notif_thresh>
+                <notif_repeat>30</notif_repeat>
+		-->
+
+		<!-- If these many fail, don't wait, send an SMS immediately ! -->
+		<urgent_thresh>5</urgent_thresh>
+
+		<!-- override default accum settings -->
+		<!--
+		<accum_time_warn>60</accum_time_warn>
+		<accum_time_error>60</accum_time_error>
+		<accum_thresh_warn>5</accum_thresh_warn>
+		<accum_thresh_error>15</accum_thresh_error>
+		-->
+
+		<!-- dependson defines other types that are to be checked if this one fails -->
+		<!-- you can have multiple -->
+		<dependson>dns</dependson>
+
+		<!-- broken_by defines other types that are checked if this one fails. -->
+		<!-- However unlike the dependson, if this type reports "failed" state, then the current type's failed state is negated -->
+		<!-- i.e. if the internet line is down, then the failed web check is negated, etc -->
+		<!-- you can have multiple -->
+		<broken_by>dsl-brk</broken_by>
+
+		<!-- Which notification group to use for this type, if you want to override default -->
+		<!--
+		<notify>Admins</notify>
+		-->
+	</Type>
+
+	<Type>
+		<!-- There is nothing special about -brk types. -->
+		<!-- Just ensure that the error threshold is low enough to trigger a failed state -->
+		<!-- Also ensure at least one node has this type defined -->
+		<name>dsl-brk</name>
+		<check>/usr/local/nagios/libexec/check_icmp 1.2.3.4</check>
+		<total_thresh_error>1</total_thresh_error>
+		<total_thresh_warn>99</total_thresh_warn>
+	</Type>
+	
+	<Type>
+		<name>dns</name>
+		<check>/usr/lib/nagios/plugins/check_dns -s $h -H www.thergioni.com</check>
+		<top>false</top>
+	</Type>
+
+	<Type>
+		<name>linux</name>
+		<check>$cp/check_snmp -h$h -olaLoadInt.1 -w500 -c1000</check>
+		<check>$cp/check_snmp -h$h -ossCpuUser.0 -w40 -c70</check>
+		<check>/usr/lib/nagios/plugins/check_nrpe -H $h -c check_conntrack</check>
+		<top>true</top>
+		<total_thresh_error>99</total_thresh_error>
+		<total_thresh_warn>2</total_thresh_warn>
+		<long_output>true</long_output>
+	</Type>
+
+	<Type>
+		<name>web</name>
+		<check>$cp/check_http -h$h</check>
+		<top>true</top>
+	</type>
+
+	<Nodes>
+		<node>
+			<!-- The node name. This must be unique as it's used to locate proper checks -->
+			<!-- This also replaces the $h in the checks definitions if no <ip> tag is present. -->
+			<name>hoth</name>
+
+			<!-- In the event you want to use an unresolvable name, or multiple ips, you can add (multiple) <ip> tags -->
+			<!-- Note, ip tags can also contain hostnames -->
+			<!-- What a mess ... :) -->
+			<!--
+			<ip>10.5.5.19</ip>
+			<ip>hoth.local.net</ip>
+			-->
+
+			<!-- This defines what "type" the node is. It therefore inherits all checks for this type -->
+			<type>important_service</type>
+			<type>linux</type>
+
+		</node>
+
+		<node>
+			<name>breakerNode</name>
+			<type>dsl-brk</type>
+		</node>
+
+		<node>
+			<name>ilum</name>
+			<type>dns</type>
+			<type>linux</type>
+
+			<!-- This adds custom arguments to a specific check -->
+			<!-- Get the check definition from where it's defined, in the type definitions -->
+			<!-- This needs to be changed, since it doesnt cover some situations. -->
+			<checkargs>
+				<check>$cp/check_snmp -h$h -ossCpuUser.0 -w40 -c70</check>
+				<args> -P 1234 -C public </args>
+			</checkargs>
+
+		</node>
+		<node>
+			<name>makeb</name>
+			<type>dns</type>
+			<type>linux</type>
+		</node>
+		<node>
+			<name>web_endpoints</name>
+
+			<ip>1.2.3.7</ip>
+                        <ip>1.2.3.8</ip>
+			<!-- thor -->
+                        <ip>rishi.local.net</ip>
+                        <ip>www.google.com</ip>
+
+			<type>web</type>
+		</node>
+
+		<node>
+			<name>main_ups</name>
+			<ip>1.2.3.4</ip>
+			<type>ups</type>
+		</node>
+
+		<node>
+			<name>backup_ups</name>
+			<ip>1.2.3.5</ip>
+			<type>ups</type>
+		</node>
+
+	</Nodes>
+</Site>

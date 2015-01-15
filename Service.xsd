@@ -14,10 +14,6 @@
 		<xs:element name="main_loop_pause" type="xs:integer"/>
 		<xs:element name="main_loop_extra_random_pause" type="xs:integer"/>
 		<xs:element name="checkpath" type="xs:string" minOccurs="1" maxOccurs="1"/>
-		<!-- obsolete
-		<xs:element name="warning_thresh" type="xs:integer"/>
-		<xs:element name="error_thresh" type="xs:integer"/>
-		-->
 		<xs:element name="total_thresh_warn" type="xs:integer"/>
 		<xs:element name="total_thresh_error" type="xs:integer"/>
 		<xs:element name="notif_thresh" type="xs:integer"/>
