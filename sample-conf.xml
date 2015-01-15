@@ -3,7 +3,7 @@
 	<name>MySite</name>
 
 	<!-- relative path for check scripts. Replaced $cp in the checks definitions -->
-	<checkpath>checks</checkpath>
+	<checkpath>sample_checks</checkpath>
 
 	<log_file>/tmp/thergioni.log</log_file>
 
@@ -14,10 +14,10 @@
 	<web_file>/tmp/thergioni_log.html</web_file>
 	
 	<!-- A web output of the config -->
-	<web_config>/home/noc/thergioni_conf.html</web_config>
+	<web_config>/tmp/thergioni_conf.html</web_config>
 
 	<!-- A web file containing current status -->
-	<web_status>/home/noc/thergioni_status.html</web_status>
+	<web_status>/tmp/thergioni_status.html</web_status>
 
 	<!-- Max time to wait for a check to complete -->
 	<check_timeout>4</check_timeout>
@@ -171,14 +171,14 @@
 		<!-- Just ensure that the error threshold is low enough to trigger a failed state -->
 		<!-- Also ensure at least one node has this type defined -->
 		<name>dsl-brk</name>
-		<check>/usr/local/nagios/libexec/check_icmp 1.2.3.4</check>
+		<check>$cp/check_icmp 1.2.3.4</check>
 		<total_thresh_error>1</total_thresh_error>
 		<total_thresh_warn>99</total_thresh_warn>
 	</Type>
 	
 	<Type>
 		<name>dns</name>
-		<check>/usr/lib/nagios/plugins/check_dns -s $h -H www.thergioni.com</check>
+		<check>$cp/check_dns -s $h -H www.thergioni.com</check>
 		<top>false</top>
 	</Type>
 
@@ -186,7 +186,7 @@
 		<name>linux</name>
 		<check>$cp/check_snmp -h$h -olaLoadInt.1 -w500 -c1000</check>
 		<check>$cp/check_snmp -h$h -ossCpuUser.0 -w40 -c70</check>
-		<check>/usr/lib/nagios/plugins/check_nrpe -H $h -c check_conntrack</check>
+		<check>$cp/check_nrpe -H $h -c check_conntrack</check>
 		<top>true</top>
 		<total_thresh_error>99</total_thresh_error>
 		<total_thresh_warn>2</total_thresh_warn>
