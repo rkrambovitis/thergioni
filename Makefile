@@ -1,5 +1,5 @@
 FLAGS= -Xlint:unchecked -Xlint:deprecation
-SRCFILES= Cascade.java
+SRCFILES= Thergioni.java
 JAVAC= /usr/bin/javac
 
 all:
