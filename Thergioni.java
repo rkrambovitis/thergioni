@@ -882,8 +882,10 @@ class Thergioni {
 				Thread.sleep(1000*sleeper);
 			} catch (Exception e) {
 				logger.severe(e.getMessage());
+				/*
 				executor.execute(new Notifier(e.getStackTrace(), e.toString()));
 				executor.shutdown();
+				*/
 				System.exit(1);
 			}
 		}
@@ -1131,12 +1133,14 @@ class Thergioni {
 			note = new String(all);
 		}
 
+/*
 		public Notifier(String type, String message, String event){
-			note = new String("/home/system/Tools/Phaistos/emitEvent cascade."+event+"."+type+" data:"+message.replaceAll(" ","_"));
+			//note = new String("/home/system/Tools/Phaistos/emitEvent thergioni."+event+"."+type+" data:"+message.replaceAll(" ","_"));
+			note = new String("sample_checks/send_xmpp thergioni."+event+"."+type+" data:"+message.replaceAll(" ","_"));
 		}
 
 		public Notifier(StackTraceElement[] stackTrace, String descr) {
-			note = new String("/home/system/Tools/Phaistos/emitEvent cascade.exception");
+			note = new String("sample_checks/send_xmpp thergioni.exception");
 			int frm=0;
 			for (StackTraceElement st : stackTrace) {
 				if (st.isNativeMethod())
@@ -1150,6 +1154,7 @@ class Thergioni {
 					+ " descr:" + descr.replaceAll(" ","_");
 			}
 		}
+*/
 
 		public void run() {
 			try {
