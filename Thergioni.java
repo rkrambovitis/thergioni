@@ -9,18 +9,18 @@ import java.util.logging.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-class Cascade {
+class Thergioni {
 	public static void main(String args[]) {
-		Cascade myCascade = new Cascade();
+		Thergioni myiThergioni = new Thergioni();
 		if (args.length == 0 ) {
-			myCascade.printUsage();
+			myThergioni.printUsage();
 			System.exit(0);
 		}
-		myCascade.readXml(args[0]);
-		myCascade.enterMainLoop();
+		myThergioni.readXml(args[0]);
+		myThergioni.enterMainLoop();
 	}
 
-	public Cascade() {
+	public Thergioni() {
 		of = new ObjectFactory();	
 		checkMap = new HashMap<String,List<String>>();
 		argMap = new HashMap<String,String>();
@@ -49,7 +49,7 @@ class Cascade {
 	}
 
 	private void printUsage() {
-		System.err.println("Usage: java Cascade <path_to_config>");
+		System.err.println("Usage: java Thergioni <path_to_config>");
 	}
 	
 	/*
@@ -59,7 +59,7 @@ class Cascade {
 		try {
 			// This one is for log messages
 			FileHandler fh = new FileHandler(fileName, 52428800, 2, true);
-			logger = Logger.getLogger("Cascade");
+			logger = Logger.getLogger("Thergioni");
 			String lcll = logLevel.toLowerCase();
 			if (lcll.equals("severe")) {
 				logger.setLevel(Level.SEVERE);
@@ -1190,10 +1190,10 @@ class Cascade {
 		}
 
 		public String getHead(Handler h) {
-			return "Cascade Logger Initiated : " + (new Date()) + "\n";
+			return "Thergioni Logger Initiated : " + (new Date()) + "\n";
 		}
 		public String getTail(Handler h) {
-			return "Cascade Logger Exiting : " + (new Date()) + "\n";
+			return "Thergioni Logger Exiting : " + (new Date()) + "\n";
 		}
 	}
 
