@@ -1,8 +1,8 @@
-# thergioni
+# Thergioni
 ## Introduction ##
-Health checker / monitoring tool designed by a system adminitrator who doesn't like being woken up for nothing.
+Health checker / monitoring tool designed / created by a system adminitrator who doesn't like being woken up for nothing.
 
-While Nagios is a good and valuable tool, relying on it for wakeup calls is entering a world of pain.
+While Nagios is a good and valuable tool, relying on it for wakeup calls is a world of pain.
 Instead we've found it to be an excellent "early warning" tool for casual day-to-day tidying up admin jobs.
 
 Custom scripts, while more powerful, as they can be tailored to your own needs, have a tendancy to be inconsistent.
@@ -41,5 +41,21 @@ All available options are included in the sample config xml file, along with bri
 ## Performance ##
 Due to the fact that only the top level "types" are checked on every iteration, and dependancies are _only_ checked when errors are detected, it is not very server hungry. Having said that, my test environment is not very large, so any feedback on this would be welcome.
 
+## Check definitions ##
+It is really easy to create your own check. Any script. Exit code 0 is success. 1 is fail. (No extra warning).
+So yes, you can use your existing nagios definitions, checks, plugins, or just roll your own.
 
+## Security ##
+Thergioni does not need elevated privileges, however it does just execute scripts. So it's as secure as you make it.
+There is no listening port however, which should limit dangerous exploit capabilities.
+
+## Output ##
+Apart from the obvious notification scripts, Thergioni also outputs 
+* a "web log", which lists last failed checks
+* a "web config", which lists current loaded config
+* a "web status", which basically states if any checks are currently failing
+* a normal log file, for normal logging reasons.
+
+## Name... wtf ? ##
+Yeah, So Thergioni is a made up name, of my commando toon in swtor (tofn server). Feel free to ping me in game :)
 
