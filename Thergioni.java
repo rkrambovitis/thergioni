@@ -342,20 +342,30 @@ class Thergioni {
 */				
 			if (sentNotif.containsKey("U_"+type)) {
 				writer.write("<div style=\"background-color:crimson;\">"+type+": URGENT</div>\n");
+				writer.write("\n\t\t<script>parent.document.title=\"URGENT - Noc phaistosnetworks\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'alert.png'</script>");
 				somethingFailed=true;
 			} else if (sentNotif.containsKey("F_"+type)) {
 				writer.write("<div style=\"background-color:chocolate;\">"+type+": Failed</div>\n");
+				writer.write("\n\t\t<script>parent.document.title=\"Failed - Noc phaistosnetworks\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'alert.png'</script>");
 				somethingFailed=true;
 			} else if (sentNotif.containsKey("W_"+type)) {
 				writer.write("<div style=\"background-color:bisque;\">"+type+": Warning</div>\n");
+				writer.write("\n\t\t<script>parent.document.title=\"Warning - Noc phaistosnetworks\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'warning.png'</script>");
 				somethingFailed=true;
 			} else if (sentNotif.containsKey("N_"+type)) {
 				writer.write("<div style=\"background-color:antiquewhite;\">"+type+": Notice</div>\n");
+				writer.write("\n\t\t<script>parent.document.title=\"Notice - Noc phaistosnetworks\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'warning.png'</script>");
 				somethingFailed=true;
 			}
 		}
 		if (!somethingFailed) {
 			writer.write("<div style=\"background-color:greenyellow;\">SUPER GREEN :)</div>\n");
+			writer.write("\n\t\t<script>parent.document.title=\"Noc phaistosnetworks\"</script>");
+			writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'favicon.png'</script>");
 		}
 		writer.write("\n\t</body>\n</html>");
 		writer.close();
