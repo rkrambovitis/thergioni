@@ -10,14 +10,28 @@
 	<!-- FINEST FINER FINE CONFIG INFO WARNING SEVERE ALL -->
 	<log_level>CONFIG</log_level> 
 
+
+	<!-- Directory to write web stuff. Write permission needed-->
+	<web_path>/var/www/thergioni</web_path>
+
 	<!-- A web file containing last check fault output. -->
-	<web_file>/tmp/thergioni_log.html</web_file>
+	<web_file>thergioni_log.html</web_file>
 	
 	<!-- A web output of the config -->
-	<web_config>/tmp/thergioni_conf.html</web_config>
+	<web_config>thergioni_conf.html</web_config>
 
 	<!-- A web file containing current status -->
-	<web_status>/tmp/thergioni_status.html</web_status>
+	<web_status>thergioni_status.html</web_status>
+
+	<!-- Title of the webpage, replacing parent.document.title -->
+        <web_title>Noc Phaistosneworks</web_title>
+
+	<!-- favicon names, set in containing page, replacing parent.document.querySelector('#favicon') -->
+        <favicon_ok>favicon.ico</favicon_ok>
+        <favicon_notice>warning.png</favicon_notice>
+        <favicon_warning>warning.png</favicon_warning>
+        <favicon_error>alert.png</favicon_error>
+        <favicon_urgent>alert.png</favicon_urgent>
 
 	<!-- Max time to wait for a check to complete -->
 	<check_timeout>4</check_timeout>

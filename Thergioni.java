@@ -113,11 +113,18 @@ class Thergioni {
 			Unmarshaller u = jc.createUnmarshaller();
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
 
+                        String webPath = new String("./");
+			if (mySite.getWebPath() != null ) {
+                                webPath = mySite.getWebPath();
+				webPath = webPath + "/";
+                        }
+
 			if (mySite.getLogLevel() == null) {
-				setupLogger(mySite.getLogFile(),"Info",mySite.getWebFile());
+				setupLogger(mySite.getLogFile(),"Info",webPath+mySite.getWebFile());
 			} else {
-				setupLogger(mySite.getLogFile(),mySite.getLogLevel(),mySite.getWebFile());
+				setupLogger(mySite.getLogFile(),mySite.getLogLevel(),webPath+mySite.getWebFile());
 			}
+                        logger.config("web_path: " + webPath);
 
 
 			logger.config("Site Name : " +mySite.getName());
@@ -256,9 +263,16 @@ class Thergioni {
 				logger.severe("No default Notification set !");
 			}
 
-			logger.fine("Dumping config to web file");
+
+			logger.fine("Dumping config to web config file");
 			try {
-				FileHandler fhc = new FileHandler(mySite.getWebConfig(), 32768, 1, false);
+				String configFile = webPath;
+				if (mySite.getWebConfig() == null) 
+					configFile = configFile + "thergioni_config.html";
+				else
+					configFile = configFile + mySite.getWebConfig();
+
+				FileHandler fhc = new FileHandler(configFile, 32768, 1, false);
 				webConf = Logger.getLogger("WebConfOutput");
 				webConf.setLevel(Level.ALL);
 				fhc.setFormatter(new WebConfFormatter());
@@ -269,14 +283,63 @@ class Thergioni {
 				System.exit(1);
 			}
 
+			if (mySite.getAccumTimeError() == null) {
+                                logger.warning("accum_time_error not set, using default = 60 (mins)");
+                                defAccumTimeError=60;
+                        } else {
+                                defAccumTimeError = mySite.getAccumTimeError().intValue();
+                        }
+                        logger.config("accumulative time error (mins) : " + defAccumTimeError);
+
+
 			logger.fine("Setting web status file path");
-			statusFilePath = new String(mySite.getWebStatus());
+			if (mySite.getWebStatus() == null) {
+				logger.warning("web_status not set, using default = thergioni_web_status.html");
+				statusFilePath = new String(webPath + "thergioni_web_status.html");
+			} else {
+				statusFilePath = webPath + mySite.getWebStatus();
+			}
+			logger.config("web_status path: " + statusFilePath);
+
+			logger.fine("Setting web title and favicons");
+			if (mySite.getWebTitle() == null) {
+				logger.warning("web_title not set, using default = Thergioni");
+				webTitle = new String("Thergioni");
+			} else {
+				webTitle = mySite.getWebTitle();
+			}
+			logger.config("web_title: " + webTitle);
+
+			logger.fine("Settig web title and favicons");
+			faviconOk = new String("favicon.png");
+			faviconNotice = new String("notice.png");
+			faviconWarning = new String("warning.png");
+			faviconError = new String("error.png");
+			faviconUrgent = new String("urgent.png");
+			if (mySite.getFaviconOk() != null) 
+				faviconOk = mySite.getFaviconOk();
+			if (mySite.getFaviconNotice() != null) 
+				faviconNotice = mySite.getFaviconNotice();
+			if (mySite.getFaviconWarning() != null) 
+				faviconWarning = mySite.getFaviconWarning();
+			if (mySite.getFaviconError() != null) 
+				faviconError = mySite.getFaviconError();
+			if (mySite.getFaviconUrgent() != null) 
+				faviconUrgent = mySite.getFaviconUrgent();
+			
+			logger.config("favicon_ok: " + faviconOk);
+			logger.config("favicon_notice: " + faviconNotice);
+			logger.config("favicon_warning: " + faviconWarning);
+			logger.config("favicon_error: " + faviconError);
+			logger.config("favicon_urgent: " + faviconUrgent);
+
 
 			logger.info("Initialization Complete");
 			argMap.clear();
 			checkMap.clear();
 		} catch (Exception fnfe) {
-			logger.severe(fnfe.getMessage());
+			System.err.println(fnfe);
+			//logger.severe(fnfe.toString());
 		}
 	}
 
@@ -342,30 +405,30 @@ class Thergioni {
 */				
 			if (sentNotif.containsKey("U_"+type)) {
 				writer.write("<div style=\"background-color:crimson;\">"+type+": URGENT</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"URGENT - Noc phaistosnetworks\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'alert.png'</script>");
+				writer.write("\n\t\t<script>parent.document.title=\"URGENT - "+webTitle+"\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconUrgent+"'</script>");
 				somethingFailed=true;
 			} else if (sentNotif.containsKey("F_"+type)) {
 				writer.write("<div style=\"background-color:chocolate;\">"+type+": Failed</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"Failed - Noc phaistosnetworks\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'alert.png'</script>");
+				writer.write("\n\t\t<script>parent.document.title=\"Failed - "+webTitle+"\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconError+"'</script>");
 				somethingFailed=true;
 			} else if (sentNotif.containsKey("W_"+type)) {
 				writer.write("<div style=\"background-color:bisque;\">"+type+": Warning</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"Warning - Noc phaistosnetworks\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'warning.png'</script>");
+				writer.write("\n\t\t<script>parent.document.title=\"Warning - "+webTitle+"\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconWarning+"'</script>");
 				somethingFailed=true;
 			} else if (sentNotif.containsKey("N_"+type)) {
 				writer.write("<div style=\"background-color:antiquewhite;\">"+type+": Notice</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"Notice - Noc phaistosnetworks\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'warning.png'</script>");
+				writer.write("\n\t\t<script>parent.document.title=\"Notice - "+webTitle+"\"</script>");
+				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconNotice+"'</script>");
 				somethingFailed=true;
 			}
 		}
 		if (!somethingFailed) {
 			writer.write("<div style=\"background-color:greenyellow;\">SUPER GREEN :)</div>\n");
-			writer.write("\n\t\t<script>parent.document.title=\"Noc phaistosnetworks\"</script>");
-			writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = 'favicon.png'</script>");
+			writer.write("\n\t\t<script>parent.document.title=\""+webTitle+"\"</script>");
+			writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconOk+"'</script>");
 		}
 		writer.write("\n\t</body>\n</html>");
 		writer.close();
@@ -753,7 +816,11 @@ class Thergioni {
 				} catch (TimeoutException|CancellationException|ExecutionException|InterruptedException e) {
 					logger.warning(e.toString());
 					int chkpos=list.indexOf(future);
-					String shortCheck=checks.get(chkpos).replaceAll(checkPath,"");
+					String shortCheck=checks.get(chkpos);
+					if (shortCheck.contains(" "))
+						shortCheck = shortCheck.substring(shortCheck.indexOf(" "));
+					else
+						shortCheck = shortCheck.replaceAll(checkPath,"");
 					logger.warning("Check exceeded "+timeOut+" seconds");
 					results[1]+=1;
 					failedOutput=failedOutput+shortCheck+":timeout, ";
@@ -1640,6 +1707,12 @@ class Thergioni {
 	private Logger logger;
 	private Logger webLog;
 	private Logger webConf;
+	private String webTitle;
+	private String faviconOk;
+	private String faviconNotice;
+	private String faviconWarning;
+	private String faviconError;
+	private String faviconUrgent;
 	private Vector<String> topTypes;
 	private Vector<String> longOutputTypes;
 	private List<String> defaultNotif;
