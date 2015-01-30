@@ -6,8 +6,15 @@
 		<xs:element name="parallel_checks" type="xs:integer" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_config" type="xs:string" minOccurs="1" maxOccurs="1"/>
-		<xs:element name="web_status" type="xs:string" minOccurs="1" maxOccurs="1"/>
+		<xs:element name="web_status" type="xs:string" />
 		<xs:element name="web_level" type="xs:string"/>
+		<xs:element name="web_title" type="xs:string"/>
+		<xs:element name="web_path" type="xs:string"/>
+		<xs:element name="favicon_ok" type="xs:string"/>
+		<xs:element name="favicon_notice" type="xs:string"/>
+		<xs:element name="favicon_warning" type="xs:string"/>
+		<xs:element name="favicon_error" type="xs:string"/>
+		<xs:element name="favicon_urgent" type="xs:string"/>
 		<xs:element name="log_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="log_level" type="xs:string"/>
 		<xs:element name="check_timeout" type="xs:integer"/>
