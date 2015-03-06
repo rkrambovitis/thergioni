@@ -1,0 +1,3 @@
+#!/bin/bash
+sleep 10s
+echo HTTP is ok

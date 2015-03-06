@@ -12,7 +12,7 @@
 
 
 	<!-- Directory to write web stuff. Write permission needed-->
-	<web_path>/var/www/thergioni</web_path>
+	<web_path>/tmp/</web_path>
 
 	<!-- A web file containing last check fault output. -->
 	<web_file>thergioni_log.html</web_file>
@@ -24,7 +24,7 @@
 	<web_status>thergioni_status.html</web_status>
 
 	<!-- Title of the webpage, replacing parent.document.title -->
-        <web_title>Noc Phaistosneworks</web_title>
+        <web_title>Thergioni</web_title>
 
 	<!-- favicon names, set in containing page, replacing parent.document.querySelector('#favicon') -->
         <favicon_ok>favicon.ico</favicon_ok>
@@ -93,6 +93,8 @@
 			<remind>$cp/notify_oncall $email</remind>
 			<!-- Scripts in rotation are extra to the standard ones -->
 			<!-- Variables: $email $number $xmpp are replaced by the values defined per on_call -->
+			<warning_script>$cp/send_echo</warning_script>
+			<error_script>$cp/send_echo</error_script>
 			<error_script>$cp/send_sms $number</error_script>
 			<error_script>$cp/send_email $email</error_script>
 			<error_script>$cp/send_xmpp $xmpp</error_script>
