@@ -800,48 +800,49 @@ class Thergioni {
 			return new String("No "+type+" checks found!");
 		} else {
 			int checksCount = checks.size();
-			List<Future<String>> list = new ArrayList<Future<String>>();
+			List<Checker> list = new ArrayList<Checker>();
 			for ( String check : checks ) {
-				Callable<String> worker = new Checker(check);
+				Checker worker = new Checker(check);
 				logger.fine(check);
-				Future<String> submit = executor.submit(worker);
-				list.add(submit);
-				//logger.finest("Threaded total: "+ ++threadCount);
+				list.add(worker);
 			}
-			int et = 0;
-			for (Future<String> future : list) {
-				try {
-					threadOutput = future.get(timeOut+et, TimeUnit.SECONDS);
-					future.cancel(true);
-				} catch (TimeoutException|CancellationException|ExecutionException|InterruptedException e) {
-					logger.warning(e.toString());
-					int chkpos=list.indexOf(future);
-					String shortCheck=checks.get(chkpos);
-					if (shortCheck.contains(" "))
-						shortCheck = shortCheck.substring(shortCheck.indexOf(" "));
-					else
-						shortCheck = shortCheck.replaceAll(checkPath,"");
-					logger.warning("Check exceeded "+timeOut+" seconds");
-					results[1]+=1;
-					failedOutput=failedOutput+shortCheck+":timeout, ";
-					et++;
-					continue;
-				}
-				String fdgt=threadOutput.substring(0,1);
-				if (fdgt.equals("0")) {
-					results[0]+=1;
-					logger.finest(threadOutput.substring(2));
-				} else {
-					results[1]+=1;
-					logger.warning(threadOutput.substring(2));
-					failedOutput=failedOutput+threadOutput.substring(2)+", ";
-					//executor.execute(new Notifier(type, threadOutput.substring(2), "failure"));
-				}
-			}
+			try {
+				List<Future<String>> output = executor.invokeAll(list, timeOut, TimeUnit.SECONDS);
+				for (Future<String> future : output) {
+					int chkpos=output.indexOf(future);
+					if (future.isCancelled()) {
+						//	System.err.println("Timeout: " + checks.get(chkpos));
+						String shortCheck=checks.get(chkpos);
+						if (shortCheck.contains(" "))
+							shortCheck = shortCheck.substring(shortCheck.indexOf(" "));
+						else
+							shortCheck = shortCheck.replaceAll(checkPath,"");
 
+						logger.warning(shortCheck + " exceeded "+timeOut+" seconds");
+						results[1]+=1;
+						failedOutput=failedOutput+shortCheck+":timeout, ";
+					} else {
+						threadOutput = future.get();
+						String fdgt=threadOutput.substring(0,1);
+						if (fdgt.equals("0")) {
+							results[0]+=1;
+							logger.finest(threadOutput.substring(2));
+						} else {
+							results[1]+=1;
+							logger.warning(threadOutput.substring(2));
+							failedOutput=failedOutput+threadOutput.substring(2)+", ";
+						}
+					}
+				}
+			} catch (CancellationException|InterruptedException|ExecutionException e) {
+				System.err.println("Exception during check: " + e);
+			}
 		}
-		if (results[1] == 0)
+		if (results[1] == 0) {
+			//all OK, just return.
+			//System.err.println("returning null for "+type);
 			return null;
+		}
 
 		int ttw = typeThresholds.get(type)[0];
 		int tte = typeThresholds.get(type)[1];
@@ -1182,7 +1183,9 @@ class Thergioni {
 				try {
 					process.waitFor();
 				} catch (InterruptedException e) {
-					System.err.println(e.getMessage());
+					//System.err.println(e.getMessage());
+					//return("1 "+check+": timeout");
+					return(null);
 				}
 				line = process.exitValue() + " ";
 				InputStream stdin = process.getInputStream();
