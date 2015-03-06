@@ -11,6 +11,13 @@ i.e. different servers / locations / schedules, notification and repeat policies
 Thergioni was built over 3 days of work leave with high fever and boredom.
 It was designed to be the _one_ tool to centralize monitoring and alerting, and in our environment, has proven to be excellent.
 
+## HOWTO ##
+* git clone
+* make gen
+* make
+* java Thergioni sample-conf.xml
+
+
 ## Design ##
 Thergioni is designed to be dependancy aware, and able to distinguish blips from problems.
 
