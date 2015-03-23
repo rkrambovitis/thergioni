@@ -130,8 +130,8 @@ class Thergioni {
 			logger.config("Site Name : " +mySite.getName());
 			checkPath = new String(mySite.getCheckpath());
 
-			logger.config("threads : " + threads);
-			threads = mySite.getParallelChecks().intValue();
+//			logger.config("threads : " + threads);
+//			threads = mySite.getParallelChecks().intValue();
 
 			if (mySite.getTotalThreshWarn() == null) {
 				logger.warning("total_thresh_warn not set, using default = 1");
@@ -943,7 +943,8 @@ class Thergioni {
 			System.exit(1);
 		}
 		dumpConf();
-		ExecutorService executor = Executors.newFixedThreadPool(threads, Executors.defaultThreadFactory());
+		//ExecutorService executor = Executors.newFixedThreadPool(threads, Executors.defaultThreadFactory());
+		ExecutorService executor = Executors.newCachedThreadPool(Executors.defaultThreadFactory());
 		String message = new String();
 		logger.info("Entering Main Loop\n");
 		long sleeper = 0l;
@@ -1176,7 +1177,7 @@ class Thergioni {
 			return check;
 		}
 
-		public String call() throws IOException {
+		public String call() throws IOException, InterruptedException {
 //			try {
 				Process process = Runtime.getRuntime().exec(check);
 				String line = new String();
@@ -1692,7 +1693,7 @@ class Thergioni {
 	private int defAccumTimeWarn;
 	private int defAccumTimeError;
 	private Long defFlapBuffer;
-	private int threads;
+//	private int threads;
 	private int loopCount;
 	private int threadCount;
 	private String checkPath;
