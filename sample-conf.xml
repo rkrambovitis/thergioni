@@ -207,6 +207,8 @@
 		<total_thresh_error>99</total_thresh_error>
 		<total_thresh_warn>2</total_thresh_warn>
 		<long_output>true</long_output>
+		<!-- check once, then skip <snooze> amount of checks -->
+		<snooze>5</snooze>
 	</Type>
 
 	<Type>
