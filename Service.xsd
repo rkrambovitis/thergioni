@@ -64,6 +64,7 @@
 			<xs:element name="accum_thresh_error" type="xs:integer"/>
 			<xs:element name="accum_time_warn" type="xs:integer"/>
 			<xs:element name="accum_time_error" type="xs:integer"/>
+			<xs:element name="snooze" type="xs:integer" />
 		</xs:sequence> </xs:complexType> </xs:element>
 
 		<xs:element name="Notification" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>

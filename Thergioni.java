@@ -28,6 +28,7 @@ class Thergioni {
 		typeDeps = new HashMap<String,List<String>>();
 		nodeCheckMap = new HashMap<String,Vector<String>>();
 		typeCheckMap = new HashMap<String,Vector<String>>();
+		snoozeMap = new HashMap<String, Snooze>();
 		topTypes = new Vector<String>();
 		longOutputTypes = new Vector<String>();
 		sentNotif = new HashMap<String,Integer>();
@@ -554,6 +555,7 @@ class Thergioni {
 			longOutputTypes.addElement(typeName);
 		}
 
+
 		/* 
 		 * This part deals with "top" attribute
 		 */
@@ -576,6 +578,19 @@ class Thergioni {
 		} else {
 			logger.config(" +++ : notify -> default");
 		}
+
+
+		/*
+		 * This part deals with "snooze" attribute
+		 */
+		int snc = 0;
+		try {
+			snc = type.getSnooze().intValue();
+			snoozeMap.put(typeName, new Snooze(snc));
+			logger.config(" +++ : Snooze -> "+snc);
+		} catch (NullPointerException npe) {
+			logger.config(" +++ : Snooze -> OFF");
+                }
 		
 		/*
 		 * This part deals with threshold
@@ -950,6 +965,15 @@ class Thergioni {
 		long sleeper = 0l;
 		while (true) {
 			for (String top : topTypes) {
+				if (snoozeMap.containsKey(top)) {
+					logger.finest("Snooze found for "+top);
+					if (snoozeMap.get(top).snooze()) {
+						logger.fine("Snoozing "+top);
+						continue;
+					}
+					logger.fine("NOT Snoozing "+top);
+				} else 
+					logger.finest("Snooze NOT found for "+top);
 				message=check(top, executor, true);
 				dispatchNotification(top, message, executor);
 				dumpStatus();
@@ -1560,6 +1584,24 @@ class Thergioni {
 		private boolean elevateOnly;
 	}
 
+	private class Snooze {
+		public Snooze(int snm) {
+			snoozeMax = snm;
+			snoozeCnt = snm;
+		}
+		public boolean snooze() {
+			snoozeCnt++;
+			logger.fine("Snooze cnt:"+snoozeCnt+" max:"+snoozeMax);
+			if (snoozeCnt >= snoozeMax) {
+				snoozeCnt = 0;
+				return false;
+			}	
+			return true;
+		}
+		private int snoozeMax;
+		private int snoozeCnt;
+	}
+
 	private class typeAccum {
 		public typeAccum(int atw, int ate, int atmw, int atme ) {
 			long timeNow = System.currentTimeMillis();
@@ -1701,6 +1743,7 @@ class Thergioni {
 	private Map<String,Vector<String>> errorMap;
 	private Map<String,List<String>> notifyMap;
 	private Map<String,typeAccum> accumMap;
+	private Map<String,Snooze> snoozeMap;
 	private Long timeOut;
 	private BigInteger pause;
 	private BigInteger pauseExtra;
