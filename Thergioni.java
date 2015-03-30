@@ -405,25 +405,25 @@ class Thergioni {
 				somethingFailed=true;
 			}
 */				
-			if (sentNotif.containsKey("U_"+type)) {
+			if (getState(type) == STATE_URGENT) {
 				writer.write("<div style=\"background-color:crimson;\">"+type+": URGENT</div>\n");
 				writer.write("\n\t\t<script>parent.document.title=\"URGENT - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconUrgent+"'</script>");
 				somethingFailed=true;
 				break;
-			} else if (sentNotif.containsKey("F_"+type) && failedLevel < 3) {
+			} else if ((getState(type) == STATE_ERROR) && failedLevel < 3) {
 				writer.write("<div style=\"background-color:chocolate;\">"+type+": Failed</div>\n");
 				writer.write("\n\t\t<script>parent.document.title=\"Failed - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconError+"'</script>");
 				somethingFailed=true;
 				failedLevel = 3;
-			} else if (sentNotif.containsKey("W_"+type) && failedLevel < 2) {
+			} else if ((getState(type) == STATE_WARN) && failedLevel < 2) {
 				writer.write("<div style=\"background-color:bisque;\">"+type+": Warning</div>\n");
 				writer.write("\n\t\t<script>parent.document.title=\"Warning - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconWarning+"'</script>");
 				somethingFailed=true;
 				failedLevel = 2;
-			} else if (sentNotif.containsKey("N_"+type) && failedLevel == 0) {
+			} else if ((getState(type) == STATE_NOTICE) && failedLevel == 0) {
 				writer.write("<div style=\"background-color:antiquewhite;\">"+type+": Notice</div>\n");
 				writer.write("\n\t\t<script>parent.document.title=\"Notice - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconNotice+"'</script>");
@@ -970,7 +970,9 @@ class Thergioni {
 		long sleeper = 0l;
 		while (true) {
 			for (String top : topTypes) {
-				if (snoozeMap.containsKey(top)) {
+				if (getState(top) != STATE_OK) {
+					logger.fine("Not Snoozing " + top + " (state not OK)");
+				} else if (snoozeMap.containsKey(top)) {
 					logger.finest("Snooze found for "+top);
 					if (snoozeMap.get(top).snooze()) {
 						logger.fine("Snoozing "+top);
@@ -1006,21 +1008,21 @@ class Thergioni {
 		int notifThresh = typeThresholds.get(type)[2];
 		if (message == null) {
 			boolean recovery = false;
-			if (sentNotif.containsKey("W_"+type)) {
+			if ( getState(type) == STATE_WARN ) {
 				if (sentNotif.get("W_"+type) >= notifThresh)
 					recovery = true;
 				sentNotif.remove("W_"+type);
 			}
-			if (sentNotif.containsKey("F_"+type)) {
+			if ( getState(type) == STATE_ERROR ) {
 				if (sentNotif.get("F_"+type) >= notifThresh)
 					recovery = true;
 				sentNotif.remove("F_"+type);
 			}
-			if (sentNotif.containsKey("U_"+type)) {
+			if ( getState(type) == STATE_URGENT ) {
 				recovery = true;
 				sentNotif.remove("U_"+type);
 			}
-			if (sentNotif.containsKey("N_"+type)) {
+			if ( getState(type) == STATE_NOTICE ) {
 				sentNotif.remove("N_"+type);
 			}
 			if (recovery) {
@@ -1064,27 +1066,21 @@ class Thergioni {
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
 				notifThresh=1; // Urgent, send on 1st failure.
-				accumMap.get(type).reset(ACCUMWARN);
-				accumMap.get(type).reset(ACCUMERR);
 			} else if (mfc.equals("F")) {
 				key="F_"+type;
 				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
-				accumMap.get(type).reset(ACCUMWARN);
-				accumMap.get(type).reset(ACCUMERR);
 			} else if (mfc.equals("W")) {
 				key="W_"+type;
 				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
-				accumMap.get(type).reset(ACCUMWARN);
-				accumMap.get(type).reset(ACCUMERR);
 			} else if (accum == ACCUMWARN) {
 				key="AW_"+type;
-			} else if (accum == ACCUMERR) {
+			} else if (accum == ACCUMERROR) {
 				key="AE_"+type;
 			}
 			try {
@@ -1113,7 +1109,7 @@ class Thergioni {
 			if ( hitRepeatThresh || (accum >= ACCUMWARN) ) {
 				for (String ng : notifyGroups) {
 					short warnOrError=0;
-					if ((mfc.equals("F") && hitRepeatThresh) || mfc.equals("U") || accum == ACCUMERR ) {
+					if ((mfc.equals("F") && hitRepeatThresh) || mfc.equals("U") || accum == ACCUMERROR ) {
 						v.addAll(errorMap.get(ng));
 						warnOrError=2;
 						logger.fine("Error scripts...");
@@ -1155,6 +1151,8 @@ class Thergioni {
 			if ( hitRepeatThresh ) {
 				message="\""+message+" count:"+sn+"\"";
 				lastNotif.put(key,timeNow);
+				accumMap.get(type).reset(ACCUMWARN);
+				accumMap.get(type).reset(ACCUMERROR);
 			} else if (accum >= ACCUMWARN) {
 				String foo = ( accum == ACCUMWARN ) ? "Warning" : "Error" ;
 				message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
@@ -1170,6 +1168,20 @@ class Thergioni {
 			}
 		}
 	} 
+
+	private short getState(String type) {
+		if (sentNotif.containsKey("U_"+type))
+			return STATE_URGENT;
+		else if (sentNotif.containsKey("F_"+type))
+			return STATE_ERROR;
+		else if (sentNotif.containsKey("W_"+type))
+			return STATE_WARN;
+		else if (sentNotif.containsKey("N_"+type))
+			return STATE_NOTICE;
+		else
+			return STATE_OK;
+
+	}
 
 	private void notifyRecovery(String type, Executor executor) {
 
@@ -1640,7 +1652,7 @@ class Thergioni {
 				returnText = "Accum Checks Disabled";
 			} else if (f == ACCUMWARN) {
 				returnText = cntWarn + " failed checks in last " + ((timeNow - tsWarn)/60000l) +" mins.";
-			} else if (f == ACCUMERR) {
+			} else if (f == ACCUMERROR) {
 				returnText = cntErr + " failed checks in last " + ((timeNow - tsErr)/60000l) +" mins.";
 			} else {
 				returnText = "Warn:" + cntWarn + " Err:" + cntErr;
@@ -1687,7 +1699,7 @@ class Thergioni {
 			if (f == ACCUMWARN) {
 				tsWarn = timeNow;
 				cntWarn = 0;
-			} else if (f == ACCUMERR) {
+			} else if (f == ACCUMERROR) {
 				tsErr = timeNow;
 				cntErr = 0;	
 			}
@@ -1777,5 +1789,10 @@ class Thergioni {
 	private Map<String, Rotater> rotMap;
 	private static final short ACCUMNONE = 0;
 	private static final short ACCUMWARN = 1;
-	private static final short ACCUMERR = 2;
+	private static final short ACCUMERROR = 2;
+	private static final short STATE_OK = 0;
+	private static final short STATE_NOTICE = 1;
+	private static final short STATE_WARN = 2;
+	private static final short STATE_ERROR = 3;
+	private static final short STATE_URGENT = 4;
 }
