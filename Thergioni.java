@@ -40,7 +40,7 @@ class Thergioni {
 		errorMap = new HashMap<String,Vector<String>>();
 		notifyMap = new HashMap<String,List<String>>();
 		typeThresholds = new HashMap<String,int[]>();
-		accumMap = new HashMap<String, typeAccum>();
+		accumMap = new HashMap<String, TypeAccum>();
 		lastNotif = new HashMap<String,Long>();
 		breakerMap = new HashMap<String,List<String>>();
 		defaultNotif = new ArrayList<String>();
@@ -669,7 +669,7 @@ class Thergioni {
 		logger.config(" +- accumulative time warning: " + atmw + " (mins)");
 		logger.config(" +- accumulative time error: " + atme + " (mins)");
 		typeThresholds.put(typeName,thresholds);
-		accumMap.put(typeName, new typeAccum(atw, ate, atmw, atme));
+		accumMap.put(typeName, new TypeAccum(atw, ate, atmw, atme));
 		
 
 	}
@@ -1040,7 +1040,7 @@ class Thergioni {
 			}
 		}
 
-		if (mfc.equals("N") && (accum == 0)) {
+		if (mfc.equals("N") && (accum == ACCUMNONE)) {
 			sentNotif.remove("W_"+type);
                         sentNotif.remove("F_"+type);
                         sentNotif.remove("U_"+type);
@@ -1064,21 +1064,27 @@ class Thergioni {
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
 				notifThresh=1; // Urgent, send on 1st failure.
+				accumMap.get(type).reset(ACCUMWARN);
+				accumMap.get(type).reset(ACCUMERR);
 			} else if (mfc.equals("F")) {
 				key="F_"+type;
 				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
+				accumMap.get(type).reset(ACCUMWARN);
+				accumMap.get(type).reset(ACCUMERR);
 			} else if (mfc.equals("W")) {
 				key="W_"+type;
 				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
-			} else if (accum == 1) {
+				accumMap.get(type).reset(ACCUMWARN);
+				accumMap.get(type).reset(ACCUMERR);
+			} else if (accum == ACCUMWARN) {
 				key="AW_"+type;
-			} else if (accum == 2) {
+			} else if (accum == ACCUMERR) {
 				key="AE_"+type;
 			}
 			try {
@@ -1104,10 +1110,10 @@ class Thergioni {
 			boolean hitRepeatThresh = ((sn % notifRepeat) == notifThresh);
 			logger.fine("hitRepeatThresh: " + hitRepeatThresh);
 
-			if ( hitRepeatThresh || (accum >= 1) ) {
+			if ( hitRepeatThresh || (accum >= ACCUMWARN) ) {
 				for (String ng : notifyGroups) {
 					short warnOrError=0;
-					if ((mfc.equals("F") && hitRepeatThresh) || mfc.equals("U") || accum == 2 ) {
+					if ((mfc.equals("F") && hitRepeatThresh) || mfc.equals("U") || accum == ACCUMERR ) {
 						v.addAll(errorMap.get(ng));
 						warnOrError=2;
 						logger.fine("Error scripts...");
@@ -1137,8 +1143,8 @@ class Thergioni {
 					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
 					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
 					return;
-				} else if (accum >=1) {
-					String foo = ( accum == 1) ? "Warning" : "Error" ;
+				} else if (accum >= ACCUMWARN) {
+					String foo = ( accum == ACCUMWARN ) ? "Warning" : "Error" ;
 					webLog.info("Accumulative "+foo+": " + type + "(" + (timeDiff/1000) + " secs since last notification)");
 					logger.warning("Accumulative "+foo+": " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
 					accumMap.get(type).reset(accum);
@@ -1149,8 +1155,8 @@ class Thergioni {
 			if ( hitRepeatThresh ) {
 				message="\""+message+" count:"+sn+"\"";
 				lastNotif.put(key,timeNow);
-			} else if (accum >= 1) {
-				String foo = ( accum == 1) ? "Warning" : "Error" ;
+			} else if (accum >= ACCUMWARN) {
+				String foo = ( accum == ACCUMWARN ) ? "Warning" : "Error" ;
 				message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
 				accumMap.get(type).reset(accum);
 				lastNotif.put(key,timeNow);
@@ -1607,8 +1613,8 @@ class Thergioni {
 		private int snoozeCnt;
 	}
 
-	private class typeAccum {
-		public typeAccum(int atw, int ate, int atmw, int atme ) {
+	private class TypeAccum {
+		public TypeAccum(int atw, int ate, int atmw, int atme ) {
 			long timeNow = System.currentTimeMillis();
 			accThreshWarn = atw;
 			accThreshError = ate;
@@ -1632,9 +1638,9 @@ class Thergioni {
 			long timeNow = System.currentTimeMillis();
 			if (disabled) {
 				returnText = "Accum Checks Disabled";
-			} else if (f == 1) {
+			} else if (f == ACCUMWARN) {
 				returnText = cntWarn + " failed checks in last " + ((timeNow - tsWarn)/60000l) +" mins.";
-			} else if (f == 2) {
+			} else if (f == ACCUMERR) {
 				returnText = cntErr + " failed checks in last " + ((timeNow - tsErr)/60000l) +" mins.";
 			} else {
 				returnText = "Warn:" + cntWarn + " Err:" + cntErr;
@@ -1678,10 +1684,10 @@ class Thergioni {
 
 		public void reset(short f) {
 			long timeNow = System.currentTimeMillis();
-			if (f == 1) {
+			if (f == ACCUMWARN) {
 				tsWarn = timeNow;
 				cntWarn = 0;
-			} else if (f == 2) {
+			} else if (f == ACCUMERR) {
 				tsErr = timeNow;
 				cntErr = 0;	
 			}
@@ -1747,7 +1753,7 @@ class Thergioni {
 	private Map<String,Vector<String>> warnMap;
 	private Map<String,Vector<String>> errorMap;
 	private Map<String,List<String>> notifyMap;
-	private Map<String,typeAccum> accumMap;
+	private Map<String,TypeAccum> accumMap;
 	private Map<String,Snooze> snoozeMap;
 	private Long timeOut;
 	private BigInteger pause;
@@ -1769,4 +1775,7 @@ class Thergioni {
 	private Vector<String> longOutputTypes;
 	private List<String> defaultNotif;
 	private Map<String, Rotater> rotMap;
+	private static final short ACCUMNONE = 0;
+	private static final short ACCUMWARN = 1;
+	private static final short ACCUMERR = 2;
 }
