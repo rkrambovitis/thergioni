@@ -1,0 +1,6 @@
+#!/bin/bash
+message="$@"
+message2=`echo $message | cut -d\  -f2-`
+Mail -s "Thergioni Mail" $1 << FOO
+$message2
+FOO
