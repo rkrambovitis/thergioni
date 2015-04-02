@@ -43,6 +43,7 @@ class Thergioni {
 		accumMap = new HashMap<String, TypeAccum>();
 		lastNotif = new HashMap<String,Long>();
 		breakerMap = new HashMap<String,List<String>>();
+		stateMap = new HashMap<String, Short>();
 		defaultNotif = new ArrayList<String>();
 		rotMap = new HashMap<String,Rotater>();
 		loopCount=0;
@@ -936,11 +937,20 @@ class Thergioni {
 			message = longMessage;
 		}
 
+/*
+		boolean snoozeLog = false;
+		if (snoozeMap.containsKey(type) && getState(type) != STATE_OK) {
+			if (snoozeMap.get(type).snooze()) {
+				snoozeLog = true;
+			}
+		}
+*/
+
 		if (results[1] >= tte) {
-		       	webLog.severe(longMessage);
+			webLog.severe(longMessage);
 			logger.warning(type +" "+ message);
 		} else if (results[1] >= ttw) {
-		       	webLog.warning(longMessage);
+			webLog.warning(longMessage);
 			logger.warning(type +" "+ message);
 		} else if (results[1] >= 1 ) {
 			webLog.info(longMessage);
@@ -1009,13 +1019,11 @@ class Thergioni {
 		if (message == null) {
 			boolean recovery = false;
 			if ( getState(type) == STATE_WARN ) {
-				if (sentNotif.get("W_"+type) >= notifThresh)
-					recovery = true;
+				recovery = true;
 				sentNotif.remove("W_"+type);
 			}
 			if ( getState(type) == STATE_ERROR ) {
-				if (sentNotif.get("F_"+type) >= notifThresh)
-					recovery = true;
+				recovery = true;
 				sentNotif.remove("F_"+type);
 			}
 			if ( getState(type) == STATE_URGENT ) {
@@ -1023,11 +1031,13 @@ class Thergioni {
 				sentNotif.remove("U_"+type);
 			}
 			if ( getState(type) == STATE_NOTICE ) {
+				setState(type, STATE_OK);
 				sentNotif.remove("N_"+type);
 			}
 			if (recovery) {
 				logger.warning("Recovery for type: "+type);
 				notifyRecovery(type, executor);
+				setState(type, STATE_OK);
 			}
 			return;
 		}
@@ -1153,6 +1163,14 @@ class Thergioni {
 				lastNotif.put(key,timeNow);
 				accumMap.get(type).reset(ACCUMWARN);
 				accumMap.get(type).reset(ACCUMERROR);
+				if (mfc.equals("U"))
+					setState(type, STATE_URGENT);
+				else if (mfc.equals("F"))
+					setState(type, STATE_ERROR);
+				else if (mfc.equals("W"))
+					setState(type, STATE_WARN);
+				else if (mfc.equals("N"))
+					setState(type, STATE_NOTICE);
 			} else if (accum >= ACCUMWARN) {
 				String foo = ( accum == ACCUMWARN ) ? "Warning" : "Error" ;
 				message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
@@ -1170,17 +1188,17 @@ class Thergioni {
 	} 
 
 	private short getState(String type) {
-		if (sentNotif.containsKey("U_"+type))
-			return STATE_URGENT;
-		else if (sentNotif.containsKey("F_"+type))
-			return STATE_ERROR;
-		else if (sentNotif.containsKey("W_"+type))
-			return STATE_WARN;
-		else if (sentNotif.containsKey("N_"+type))
-			return STATE_NOTICE;
+		if (stateMap.containsKey(type))
+			return stateMap.get(type);
 		else
 			return STATE_OK;
-
+	}
+	private void setState(String type, short state) {
+		if (state == STATE_OK) {
+			stateMap.remove(type);
+		} else {
+			stateMap.put(type, state);
+		}
 	}
 
 	private void notifyRecovery(String type, Executor executor) {
@@ -1787,6 +1805,7 @@ class Thergioni {
 	private Vector<String> longOutputTypes;
 	private List<String> defaultNotif;
 	private Map<String, Rotater> rotMap;
+	private Map<String, Short> stateMap;
 	private static final short ACCUMNONE = 0;
 	private static final short ACCUMWARN = 1;
 	private static final short ACCUMERROR = 2;
