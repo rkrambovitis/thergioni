@@ -399,34 +399,27 @@ class Thergioni {
 		boolean somethingFailed=false;
 		int failedLevel = 0;
 		for (String type : topTypes) {
-/*
-			short foo = accumMap.get(type).fail(false);
-			if (foo != 0 ) {
-				writer.write("<div style=\"background-color:chocolate;\">"+accumMap.get(type).getMessage()+"</div<\n");
-				somethingFailed=true;
-			}
-*/				
 			if (getState(type) == STATE_URGENT) {
 				writer.write("<div style=\"background-color:crimson;\">"+type+": URGENT</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"URGENT - "+webTitle+"\"</script>");
+				writer.write("\n\t\t<script>parent.document.title=\"[U]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconUrgent+"'</script>");
 				somethingFailed=true;
 				break;
 			} else if ((getState(type) == STATE_ERROR) && failedLevel < 3) {
-				writer.write("<div style=\"background-color:chocolate;\">"+type+": Failed</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"Failed - "+webTitle+"\"</script>");
+				writer.write("<div style=\"background-color:chocolate;\">"+type+": Error</div>\n");
+				writer.write("\n\t\t<script>parent.document.title=\"[E]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconError+"'</script>");
 				somethingFailed=true;
 				failedLevel = 3;
 			} else if ((getState(type) == STATE_WARN) && failedLevel < 2) {
 				writer.write("<div style=\"background-color:bisque;\">"+type+": Warning</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"Warning - "+webTitle+"\"</script>");
+				writer.write("\n\t\t<script>parent.document.title=\"[W]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconWarning+"'</script>");
 				somethingFailed=true;
 				failedLevel = 2;
 			} else if ((getState(type) == STATE_NOTICE) && failedLevel == 0) {
 				writer.write("<div style=\"background-color:antiquewhite;\">"+type+": Notice</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"Notice - "+webTitle+"\"</script>");
+				writer.write("\n\t\t<script>parent.document.title=\"[N]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconNotice+"'</script>");
 				somethingFailed=true;
 				failedLevel = 1;
