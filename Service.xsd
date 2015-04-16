@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-	<xs:element name="Site"> <xs:complexType> <xs:sequence>
+	<xs:element name="site"> <xs:complexType> <xs:sequence>
 		<xs:element name="name" type="xs:string"/>
 		<xs:element name="parallel_checks" type="xs:integer" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
@@ -32,7 +32,7 @@
 		<xs:element name="accum_time_warn" type="xs:integer"/>
 		<xs:element name="accum_time_error" type="xs:integer"/>
 
-		<xs:element name="Nodes"> <xs:complexType> <xs:sequence>
+		<xs:element name="nodes"> <xs:complexType> <xs:sequence>
 			<xs:element name="node" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 				<xs:element name="name" type="xs:string" minOccurs="1" maxOccurs="1"/>
 				<xs:element name="ip" type="xs:string" maxOccurs="unbounded"/>
@@ -44,7 +44,7 @@
 			</xs:sequence> </xs:complexType> </xs:element>
 		</xs:sequence> </xs:complexType> </xs:element>
 
-		<xs:element name="Type" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
+		<xs:element name="type" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 			<xs:element name="name" type="xs:string"/>
 			<xs:element name="check" type="xs:string" maxOccurs="unbounded"/>
 			<xs:element name="dependson" type="xs:string" maxOccurs="unbounded"/>
@@ -65,9 +65,10 @@
 			<xs:element name="accum_time_warn" type="xs:integer"/>
 			<xs:element name="accum_time_error" type="xs:integer"/>
 			<xs:element name="snooze" type="xs:integer" />
+			<xs:element name="reaction" type="xs:string" maxOccurs="unbounded"/>
 		</xs:sequence> </xs:complexType> </xs:element>
 
-		<xs:element name="Notification" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
+		<xs:element name="notification" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 			<xs:element name="name" type="xs:string"/>
 			<xs:element name="default" type="xs:boolean"/>
 			<xs:element name="warning_script" type="xs:string" maxOccurs="unbounded"/>

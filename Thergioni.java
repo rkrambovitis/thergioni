@@ -38,6 +38,7 @@ class Thergioni {
 		//errorScripts = new Vector<String>();
 		warnMap = new HashMap<String,Vector<String>>();
 		errorMap = new HashMap<String,Vector<String>>();
+		reactionMap = new HashMap<String,Vector<String>>();
 		notifyMap = new HashMap<String,List<String>>();
 		typeThresholds = new HashMap<String,int[]>();
 		accumMap = new HashMap<String, TypeAccum>();
@@ -312,7 +313,7 @@ class Thergioni {
 			}
 			logger.config("web_title: " + webTitle);
 
-			logger.fine("Settig web title and favicons");
+			logger.fine("Setting web title and favicons");
 			faviconOk = new String("favicon.png");
 			faviconNotice = new String("notice.png");
 			faviconWarning = new String("warning.png");
@@ -562,6 +563,23 @@ class Thergioni {
 			logger.config(" +++ : type " + typeName + " is top level");
 			topTypes.addElement(typeName);
 		}
+
+		/*
+		 * This part deals with reaction script
+		 */
+                List<String> reactionList = new ArrayList<String>();
+		Vector<String> reactions = new Vector<String>();
+                reactionList = type.getReaction();
+                if (!reactionList.isEmpty()) {
+                        for (String react : reactionList) {
+				react=react.replaceAll("\\$cp", checkPath);
+                                logger.config(" +++ : reaction -> "+react);
+				reactions.addElement(react);
+                        }
+                        reactionMap.put(typeName, reactions);
+                } else {
+                        logger.config(" +++ : reaction -> none");
+                }
 
 		/* 
 		 * This part deals with "notify" attribute.
@@ -996,7 +1014,7 @@ class Thergioni {
 			} catch (Exception e) {
 				logger.severe(e.getMessage());
 				/*
-				executor.execute(new Notifier(e.getStackTrace(), e.toString()));
+				executor.execute(new Runner(e.getStackTrace(), e.toString()));
 				executor.shutdown();
 				*/
 				System.exit(1);
@@ -1011,22 +1029,23 @@ class Thergioni {
 		int notifThresh = typeThresholds.get(type)[2];
 		if (message == null) {
 			boolean recovery = false;
-			if ( getState(type) == STATE_WARN ) {
-				recovery = true;
-				sentNotif.remove("W_"+type);
+			switch(getState(type)) {
+				case STATE_URGENT:
+				case STATE_ERROR:
+				case STATE_WARN:
+					recovery = true;
+					setState(type, STATE_OK);
+					break;
+				case STATE_NOTICE:
+					setState(type, STATE_OK);
+					break;
 			}
-			if ( getState(type) == STATE_ERROR ) {
-				recovery = true;
-				sentNotif.remove("F_"+type);
-			}
-			if ( getState(type) == STATE_URGENT ) {
-				recovery = true;
-				sentNotif.remove("U_"+type);
-			}
-			if ( getState(type) == STATE_NOTICE ) {
-				setState(type, STATE_OK);
-				sentNotif.remove("N_"+type);
-			}
+
+			sentNotif.remove("U_"+type);
+			sentNotif.remove("F_"+type);
+			sentNotif.remove("W_"+type);
+			sentNotif.remove("N_"+type);
+
 			if (recovery) {
 				logger.warning("Recovery for type: "+type);
 				notifyRecovery(type, executor);
@@ -1156,14 +1175,17 @@ class Thergioni {
 				lastNotif.put(key,timeNow);
 				accumMap.get(type).reset(ACCUMWARN);
 				accumMap.get(type).reset(ACCUMERROR);
-				if (mfc.equals("U"))
+				if (mfc.equals("U")) {
 					setState(type, STATE_URGENT);
-				else if (mfc.equals("F"))
+					react(type, executor);
+				} else if (mfc.equals("F")) {
 					setState(type, STATE_ERROR);
-				else if (mfc.equals("W"))
+					react(type, executor);
+				} else if (mfc.equals("W")) {
 					setState(type, STATE_WARN);
-				else if (mfc.equals("N"))
+				} else if (mfc.equals("N")) {
 					setState(type, STATE_NOTICE);
+				}
 			} else if (accum >= ACCUMWARN) {
 				String foo = ( accum == ACCUMWARN ) ? "Warning" : "Error" ;
 				message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
@@ -1173,12 +1195,25 @@ class Thergioni {
 				return;
 			}
 			for (String s : v) {
-				Runnable r = new Notifier(s+" "+message);
+				Runnable r = new Runner(s+" "+message);
 				logger.info("Dispatching notification " + s + " " + message);
 				executor.execute(r);		
 			}
 		}
 	} 
+
+	private void react(String type, Executor executor) {
+		if (reactionMap.containsKey(type)) {
+			Vector<String> reactions = new Vector<String>(reactionMap.get(type));
+			Runnable r;
+			logger.info("Executing reaction scripts for "+type);
+			for (String reaction:reactions) {
+				r = new Runner(reaction);
+				logger.info(" + "+reaction);
+				executor.execute(r);
+			}
+		}
+	}
 
 	private short getState(String type) {
 		if (stateMap.containsKey(type))
@@ -1211,11 +1246,11 @@ class Thergioni {
 		}
 		String message = new String("Recovery: "+type);
 		for (String s : v) {
-			Runnable r = new Notifier(s+" "+message);
+			Runnable r = new Runner(s+" "+message);
 			logger.info("Dispatching notification " + s + " " + message);
 			executor.execute(r);		
 		}
-		//Runnable r = new Notifier(type, message, "recovery");
+		//Runnable r = new Runner(type, message, "recovery");
 		//executor.execute(r);
 	}
 
@@ -1265,41 +1300,18 @@ class Thergioni {
 	}
 
 	/*
-	 * Simple thread notifier
+	 * Simple thread runner
 	 */
-	private static class Notifier implements Runnable {
-		public Notifier(String all){
-			note = new String(all);
+	private static class Runner implements Runnable {
+		public Runner(String all){
+			runme = new String(all);
 		}
-
-/*
-		public Notifier(String type, String message, String event){
-			//note = new String("/home/system/Tools/Phaistos/emitEvent thergioni."+event+"."+type+" data:"+message.replaceAll(" ","_"));
-			note = new String("sample_checks/send_xmpp thergioni."+event+"."+type+" data:"+message.replaceAll(" ","_"));
-		}
-
-		public Notifier(StackTraceElement[] stackTrace, String descr) {
-			note = new String("sample_checks/send_xmpp thergioni.exception");
-			int frm=0;
-			for (StackTraceElement st : stackTrace) {
-				if (st.isNativeMethod())
-					continue;
-				note = note 
-					//+ " frame:" +frm 
-					+ " file:" +st.getFileName() 
-					+ " class:" +st.getClassName()
-					+ " method:" +st.getMethodName()
-					+ " line:" +st.getLineNumber()
-					+ " descr:" + descr.replaceAll(" ","_");
-			}
-		}
-*/
 
 		public void run() {
 			try {
-				Process process = Runtime.getRuntime().exec(note);
+				Process process = Runtime.getRuntime().exec(runme);
 				try {
-					System.err.println(note);
+					System.err.println(runme);
 					process.waitFor();
 				} catch (InterruptedException e) {
 					System.err.println(e.getMessage());
@@ -1308,7 +1320,7 @@ class Thergioni {
 				e.printStackTrace();
 			}
 		}
-		private String note;
+		private String runme;
 	}
 
 	/*
@@ -1778,6 +1790,7 @@ class Thergioni {
 	private Map<String,List<String>> notifyMap;
 	private Map<String,TypeAccum> accumMap;
 	private Map<String,Snooze> snoozeMap;
+	private Map<String,Vector<String>> reactionMap;
 	private Long timeOut;
 	private BigInteger pause;
 	private BigInteger pauseExtra;
