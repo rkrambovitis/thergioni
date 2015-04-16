@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Site>
-	<name>MySite</name>
+<site>
+	<name>Mysite</name>
 
 	<!-- relative path for check scripts. Replaced $cp in the checks definitions -->
 	<checkpath>sample_checks</checkpath>
@@ -71,7 +71,7 @@
 	<accum_thresh_error>15</accum_thresh_error>
 	-->
 
-	<Notification>
+	<notification>
 		<name>Admins</name>
 		<!-- This is the default notification group. (there can be only one) -->
 		<default>true</default>
@@ -120,9 +120,9 @@
 				<elevate_only>true</elevate_only>
 			</on_call>
 		</rotation>
-	</Notification>
+	</notification>
 
-	<Type>
+	<type>
 		<!-- The name identifies the type -->
 		<name>important_service</name>
 		<!-- The check definition (you can have more than 1) -->
@@ -180,9 +180,9 @@
 		<!--
 		<notify>Admins</notify>
 		-->
-	</Type>
+	</type>
 
-	<Type>
+	<type>
 		<!-- There is nothing special about -brk types. -->
 		<!-- Just ensure that the error threshold is low enough to trigger a failed state -->
 		<!-- Also ensure at least one node has this type defined -->
@@ -190,15 +190,15 @@
 		<check>$cp/check_icmp 1.2.3.4</check>
 		<total_thresh_error>1</total_thresh_error>
 		<total_thresh_warn>99</total_thresh_warn>
-	</Type>
+	</type>
 	
-	<Type>
+	<type>
 		<name>dns</name>
 		<check>$cp/check_dns -s $h -H www.thergioni.com</check>
 		<top>false</top>
-	</Type>
+	</type>
 
-	<Type>
+	<type>
 		<name>linux</name>
 		<check>$cp/check_snmp -h$h -olaLoadInt.1 -w500 -c1000</check>
 		<check>$cp/check_snmp -h$h -ossCpuUser.0 -w40 -c70</check>
@@ -209,15 +209,15 @@
 		<long_output>true</long_output>
 		<!-- check once, then skip <snooze> amount of checks -->
 		<snooze>5</snooze>
-	</Type>
+	</type>
 
-	<Type>
+	<type>
 		<name>web</name>
 		<check>$cp/check_http -h$h</check>
 		<top>true</top>
-	</Type>
+	</type>
 
-	<Nodes>
+	<nodes>
 		<node>
 			<!-- The node name. This must be unique as it's used to locate proper checks -->
 			<!-- This also replaces the $h in the checks definitions if no <ip> tag is present. -->
@@ -285,5 +285,5 @@
 			<type>ups</type>
 		</node>
 
-	</Nodes>
-</Site>
+	</nodes>
+</site>
