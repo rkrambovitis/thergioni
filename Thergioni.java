@@ -617,8 +617,8 @@ class Thergioni {
 		 * nr - number of failures after which is should notify again
 		 */
 
-		int ttw, tte, nt, nr, ut, atw, ate, atmw, atme;
-		int[] thresholds = new int[5];
+		int ttw, tte, nt, nr, ut, atw, ate, atmw, atme, rt;
+		int[] thresholds = new int[6];
 
 		try {
 			ttw = type.getTotalThreshWarn().intValue();
@@ -634,6 +634,11 @@ class Thergioni {
 			nt = type.getNotifThresh().intValue();
 		} catch (NullPointerException npe) {
                         nt=defNotifThresh;
+                }
+		try {
+			rt = type.getReactThresh().intValue();
+		} catch (NullPointerException npe) {
+                        rt=nt;
                 }
 		try {
 			nr = type.getNotifRepeat().intValue();
@@ -676,13 +681,14 @@ class Thergioni {
 		thresholds[3]=nr;
 		logger.config(" +- urgent threshold: " + ut);
 		thresholds[4]=ut;
+		logger.config(" +- react threshold: " + ut);
+		thresholds[5]=rt;
 		logger.config(" +- accumulative threshold warning: " + atw);
 		logger.config(" +- accumulative threshold error: " + ate);
 		logger.config(" +- accumulative time warning: " + atmw + " (mins)");
 		logger.config(" +- accumulative time error: " + atme + " (mins)");
 		typeThresholds.put(typeName,thresholds);
 		accumMap.put(typeName, new TypeAccum(atw, ate, atmw, atme));
-		
 
 	}
 
@@ -1125,7 +1131,9 @@ class Thergioni {
 
 			Vector<String> v = new Vector<String>();
 			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+" sn%repeat:"+sn%notifRepeat+")");
-			boolean hitRepeatThresh = ((sn % notifRepeat) == notifThresh);
+			//boolean hitRepeatThresh = ((sn % notifRepeat) == notifThresh || sn == notifThresh);
+			boolean hitRepeatThresh = (((sn - notifThresh) % notifRepeat) == 0);
+			boolean hitReactThresh = (sn == typeThresholds.get(type)[5]);
 			logger.fine("hitRepeatThresh: " + hitRepeatThresh);
 
 			if ( hitRepeatThresh || (accum >= ACCUMWARN) ) {
@@ -1170,22 +1178,26 @@ class Thergioni {
 				}
 			}
 
+			if ( hitReactThresh ) {
+				if (mfc.equals("U"))
+					react(type, executor);
+				else if (mfc.equals("F"))
+					react(type, executor);
+			}
+
 			if ( hitRepeatThresh ) {
 				message="\""+message+" count:"+sn+"\"";
 				lastNotif.put(key,timeNow);
 				accumMap.get(type).reset(ACCUMWARN);
 				accumMap.get(type).reset(ACCUMERROR);
-				if (mfc.equals("U")) {
+				if (mfc.equals("U"))
 					setState(type, STATE_URGENT);
-					react(type, executor);
-				} else if (mfc.equals("F")) {
+				else if (mfc.equals("F"))
 					setState(type, STATE_ERROR);
-					react(type, executor);
-				} else if (mfc.equals("W")) {
+				else if (mfc.equals("W"))
 					setState(type, STATE_WARN);
-				} else if (mfc.equals("N")) {
+				else if (mfc.equals("N"))
 					setState(type, STATE_NOTICE);
-				}
 			} else if (accum >= ACCUMWARN) {
 				String foo = ( accum == ACCUMWARN ) ? "Warning" : "Error" ;
 				message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
