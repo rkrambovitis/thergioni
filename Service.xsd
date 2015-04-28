@@ -56,6 +56,7 @@
 			<xs:element name="total_thresh_warn" type="xs:integer"/>
 			<xs:element name="total_thresh_error" type="xs:integer"/>
 			<xs:element name="notif_thresh" type="xs:integer"/>
+			<xs:element name="react_thresh" type="xs:integer"/>
 			<xs:element name="notif_repeat" type="xs:integer"/>
 			<xs:element name="notif_flap_buffer" type="xs:integer"/>
 			<xs:element name="long_output" type="xs:boolean"/>
