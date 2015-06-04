@@ -304,6 +304,15 @@ class Thergioni {
 			}
 			logger.config("web_status path: " + statusFilePath);
 
+			logger.fine("Setting status script");
+			if (mySite.getStatusScript() == null) {
+				logger.warning("status_script not set, using default = echo");
+				statusScript = new String("echo ");
+			} else {
+				statusScript = mySite.getStatusScript().replaceAll("\\$cp", checkPath);
+			}
+			logger.config("status_script: " + statusScript);
+
 			logger.fine("Setting web title and favicons");
 			if (mySite.getWebTitle() == null) {
 				logger.warning("web_title not set, using default = Thergioni");
@@ -381,7 +390,7 @@ class Thergioni {
 		}
 	}
 
-	private void dumpStatus() {
+	private void dumpStatus(Executor executor) {
 		try {
 		Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(statusFilePath), "utf-8"));
 		writer.write("<html>\n\t<head>");
@@ -399,11 +408,14 @@ class Thergioni {
 
 		boolean somethingFailed=false;
 		int failedLevel = 0;
+		String failedType = new String();
 		for (String type : topTypes) {
 			if (getState(type) == STATE_URGENT) {
 				writer.write("<div style=\"background-color:crimson;\">"+type+": URGENT</div>\n");
 				writer.write("\n\t\t<script>parent.document.title=\"[U]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconUrgent+"'</script>");
+				failedLevel = 4;
+				failedType = type;
 				somethingFailed=true;
 				break;
 			} else if ((getState(type) == STATE_ERROR) && failedLevel < 3) {
@@ -411,26 +423,44 @@ class Thergioni {
 				writer.write("\n\t\t<script>parent.document.title=\"[E]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconError+"'</script>");
 				somethingFailed=true;
+				failedType = type;
 				failedLevel = 3;
 			} else if ((getState(type) == STATE_WARN) && failedLevel < 2) {
 				writer.write("<div style=\"background-color:bisque;\">"+type+": Warning</div>\n");
 				writer.write("\n\t\t<script>parent.document.title=\"[W]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconWarning+"'</script>");
 				somethingFailed=true;
+				failedType = type;
 				failedLevel = 2;
 			} else if ((getState(type) == STATE_NOTICE) && failedLevel == 0) {
 				writer.write("<div style=\"background-color:antiquewhite;\">"+type+": Notice</div>\n");
 				writer.write("\n\t\t<script>parent.document.title=\"[N]"+type+" - "+webTitle+"\"</script>");
 				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconNotice+"'</script>");
 				somethingFailed=true;
+				failedType = type;
 				failedLevel = 1;
 			}
 		}
+		String toScript = statusScript;
 		if (!somethingFailed) {
 			writer.write("<div style=\"background-color:greenyellow;\">SUPER GREEN :)</div>\n");
 			writer.write("\n\t\t<script>parent.document.title=\""+webTitle+"\"</script>");
 			writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconOk+"'</script>");
+			toScript = toScript + " OK ";
+		} else {
+			if (failedLevel == 4)
+				toScript = toScript + " URGENT ";
+			else if (failedLevel == 3)
+				toScript = toScript + " ERROR ";
+			else if (failedLevel == 2)
+				toScript = toScript + " WARNING ";
+			else if (failedLevel == 1)
+				toScript = toScript + " NOTICE ";
+
+			toScript = toScript + failedType;
 		}
+		Runner r = new Runner(toScript);
+		executor.execute(r);
 		writer.write("\n\t</body>\n</html>");
 		writer.close();
 		} catch (IOException e) {
@@ -858,7 +888,7 @@ class Thergioni {
 
 						logger.warning(shortCheck + " exceeded "+timeOut+" seconds");
 						results[1]+=1;
-						failedOutput=failedOutput+shortCheck+":timeout, ";
+						failedOutput=failedOutput+shortCheck.replaceAll("\"","\'")+":timeout, ";
 					} else {
 						threadOutput = future.get();
 						String fdgt=threadOutput.substring(0,1);
@@ -1011,8 +1041,8 @@ class Thergioni {
 					logger.finest("Snooze NOT found for "+top);
 				message=check(top, executor, true);
 				dispatchNotification(top, message, executor);
-				dumpStatus();
 			}
+			dumpStatus(executor);
 			try {
 				sleeper = pause.longValue() + (long)(Math.random()*pauseExtra.longValue());
 				logger.fine("top checks complete, initiating sleep for " + sleeper + " sec");
@@ -1811,6 +1841,7 @@ class Thergioni {
 //	private String confFile;
 //	private String confPath;
 	private String statusFilePath;
+	private String statusScript;
 	private Logger logger;
 	private Logger webLog;
 	private Logger webConf;

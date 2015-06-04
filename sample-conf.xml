@@ -23,6 +23,10 @@
 	<!-- A web file containing current status -->
 	<web_status>thergioni_status.html</web_status>
 
+	<!-- A script to call on every run with status.-->
+	<!-- arguments are level (i.e. OK, or ERROR) and service (if not OK) -->
+        <status_script>$cp/send_tipboard</status_script>
+
 	<!-- Title of the webpage, replacing parent.document.title -->
         <web_title>Thergioni</web_title>
 
