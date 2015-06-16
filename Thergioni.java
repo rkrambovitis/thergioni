@@ -1064,9 +1064,10 @@ class Thergioni {
 	 */
 	private void dispatchNotification(String type, String message, Executor executor) {
 		int notifThresh = typeThresholds.get(type)[2];
+		short state = getState(type);
 		if (message == null) {
 			boolean recovery = false;
-			switch(getState(type)) {
+			switch(state) {
 				case STATE_URGENT:
 				case STATE_ERROR:
 				case STATE_WARN:
@@ -1090,6 +1091,7 @@ class Thergioni {
 			}
 			return;
 		}
+
 		String mfc = message.substring(type.length()+1,type.length()+2);
 		short accum = 0;
 		if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("W")) {
@@ -1102,10 +1104,15 @@ class Thergioni {
 		}
 
 		if (mfc.equals("N") && (accum == ACCUMNONE)) {
-			sentNotif.remove("W_"+type);
-                        sentNotif.remove("F_"+type);
                         sentNotif.remove("U_"+type);
+                        sentNotif.remove("F_"+type);
+			sentNotif.remove("W_"+type);
 			sentNotif.put("N_"+type, 0);
+			if (state > STATE_NOTICE) {
+				logger.warning("State change for type: "+type);
+				notifyRecovery(type, executor);
+				setState(type, STATE_OK);
+			}
 /*
 		} else if ((!mfc.equals("W"))&&(!mfc.equals("F"))&&(!mfc.equals("U"))&&(!mfc.equals("N"))) {
 			sentWNotif.remove("W_"+type);
@@ -1124,6 +1131,9 @@ class Thergioni {
 				if (sn == null)
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
+				sentNotif.remove("F_"+type);
+				sentNotif.remove("W_"+type);
+				sentNotif.remove("N_"+type);
 				notifThresh=1; // Urgent, send on 1st failure.
 			} else if (mfc.equals("F")) {
 				key="F_"+type;
@@ -1131,12 +1141,28 @@ class Thergioni {
 				if (sn == null)
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
+				sentNotif.remove("U_"+type);
+				sentNotif.remove("W_"+type);
+				sentNotif.remove("N_"+type);
+				if (state > STATE_ERROR) {
+					logger.warning("State change for type: "+type);
+					notifyRecovery(type, executor);
+					setState(type, STATE_OK);
+				}
 			} else if (mfc.equals("W")) {
 				key="W_"+type;
 				sn = sentNotif.get(key);
 				if (sn == null)
 					sn=new Integer(0);
 				sentNotif.put(key, ++sn);
+				sentNotif.remove("U_"+type);
+				sentNotif.remove("F_"+type);
+				sentNotif.remove("N_"+type);
+				if (state > STATE_WARN) {
+					logger.warning("State change for type: "+type);
+					notifyRecovery(type, executor);
+					setState(type, STATE_OK);
+				}
 			} else if (accum == ACCUMWARN) {
 				key="AW_"+type;
 			} else if (accum == ACCUMERROR) {
