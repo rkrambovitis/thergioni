@@ -1142,10 +1142,10 @@ class Thergioni {
 				sentNotif.remove("U_"+type);
 				sentNotif.remove("W_"+type);
 				sentNotif.remove("N_"+type);
-				if (state > STATE_ERROR) 
-					notifyStateChange(type, executor, STATE_OK);
-				if (state != STATE_ERROR)
-					setState(type, STATE_OK);
+				if (state > STATE_NOTICE && state != STATE_ERROR) {
+					notifyStateChange(type, executor, STATE_ERROR);
+					setState(type, STATE_ERROR);
+				}
 			} else if (mfc.equals("W")) {
 				key="W_"+type;
 				sn = sentNotif.get(key);
@@ -1155,10 +1155,10 @@ class Thergioni {
 				sentNotif.remove("U_"+type);
 				sentNotif.remove("F_"+type);
 				sentNotif.remove("N_"+type);
-				if (state > STATE_WARN)
-					notifyStateChange(type, executor, STATE_OK);
-				if (state != STATE_WARN)
-					setState(type, STATE_OK);
+				if (state > STATE_WARN) {
+					notifyStateChange(type, executor, STATE_WARN);
+					setState(type, STATE_WARN);
+				}
 			} else if (accum == ACCUMWARN) {
 				key="AW_"+type;
 			} else if (accum == ACCUMERROR) {
