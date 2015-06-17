@@ -1085,8 +1085,7 @@ class Thergioni {
 			sentNotif.remove("N_"+type);
 
 			if (recovery) {
-				logger.warning("Recovery for type: "+type);
-				notifyRecovery(type, executor);
+				notifyStateChange(type, executor, STATE_OK);
 				setState(type, STATE_OK);
 			}
 			return;
@@ -1109,8 +1108,7 @@ class Thergioni {
 			sentNotif.remove("W_"+type);
 			sentNotif.put("N_"+type, 0);
 			if (state > STATE_NOTICE) {
-				logger.warning("State change for type: "+type);
-				notifyRecovery(type, executor);
+				notifyStateChange(type, executor, STATE_OK);
 				setState(type, STATE_OK);
 			}
 /*
@@ -1144,11 +1142,10 @@ class Thergioni {
 				sentNotif.remove("U_"+type);
 				sentNotif.remove("W_"+type);
 				sentNotif.remove("N_"+type);
-				if (state > STATE_ERROR) {
-					logger.warning("State change for type: "+type);
-					notifyRecovery(type, executor);
+				if (state > STATE_ERROR) 
+					notifyStateChange(type, executor, STATE_OK);
+				if (state != STATE_ERROR)
 					setState(type, STATE_OK);
-				}
 			} else if (mfc.equals("W")) {
 				key="W_"+type;
 				sn = sentNotif.get(key);
@@ -1158,11 +1155,10 @@ class Thergioni {
 				sentNotif.remove("U_"+type);
 				sentNotif.remove("F_"+type);
 				sentNotif.remove("N_"+type);
-				if (state > STATE_WARN) {
-					logger.warning("State change for type: "+type);
-					notifyRecovery(type, executor);
+				if (state > STATE_WARN)
+					notifyStateChange(type, executor, STATE_OK);
+				if (state != STATE_WARN)
 					setState(type, STATE_OK);
-				}
 			} else if (accum == ACCUMWARN) {
 				key="AW_"+type;
 			} else if (accum == ACCUMERROR) {
@@ -1221,20 +1217,6 @@ class Thergioni {
 				}
 			}
 
-			if (timeDiff <= defFlapBuffer) {
-				if (sn == notifThresh) {
-					webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
-					logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
-					return;
-				} else if (accum >= ACCUMWARN) {
-					String foo = ( accum == ACCUMWARN ) ? "Warning" : "Error" ;
-					webLog.info("Accumulative "+foo+": " + type + "(" + (timeDiff/1000) + " secs since last notification)");
-					logger.warning("Accumulative "+foo+": " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
-					accumMap.get(type).reset(accum);
-					return;
-				}
-			}
-
 			if ( hitReactThresh ) {
 				if (mfc.equals("U"))
 					react(type, executor);
@@ -1242,9 +1224,13 @@ class Thergioni {
 					react(type, executor);
 			}
 
+			boolean flapping = false;
+			if (timeDiff <= defFlapBuffer && sn == notifThresh)
+				flapping = true;
+
 			if ( hitRepeatThresh ) {
 				message="\""+message+" count:"+sn+"\"";
-				lastNotif.put(key,timeNow);
+				if (!flapping) lastNotif.put(key,timeNow);
 				accumMap.get(type).reset(ACCUMWARN);
 				accumMap.get(type).reset(ACCUMERROR);
 				if (mfc.equals("U"))
@@ -1261,6 +1247,11 @@ class Thergioni {
 				accumMap.get(type).reset(accum);
 				lastNotif.put(key,timeNow);
 			} else {
+				return;
+			}
+			if (flapping) {
+				webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
+				logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
 				return;
 			}
 			for (String s : v) {
@@ -1298,7 +1289,35 @@ class Thergioni {
 		}
 	}
 
-	private void notifyRecovery(String type, Executor executor) {
+	private String stateToString(short state) {
+		switch(state) {
+                        case STATE_URGENT:
+                                return "URGENT";
+                        case STATE_ERROR:
+				return "ERROR";
+                        case STATE_WARN:
+				return "WARNING";
+                        case STATE_NOTICE:
+				return "NOTICE";
+                        case STATE_OK:
+				return "OK";
+                }
+		return "Invalid State";
+	}
+
+	private void notifyStateChange(String type, Executor executor, short newState) {
+		logger.warning("State change to "+ stateToString(newState) +" for type: "+type);
+		String message = new String();
+		switch(newState) {
+			case STATE_URGENT:
+			case STATE_ERROR:
+			case STATE_WARN:
+				message = type + " transitioned to "+ stateToString(newState) +" state!";
+			case STATE_NOTICE:
+			case STATE_OK:
+				message = "Recovery: "+type;
+				break;
+		}
 
 		ArrayList<String> notifyGroups = new ArrayList<String>();
 		if (!notifyMap.containsKey(type)) {
@@ -1313,7 +1332,6 @@ class Thergioni {
 			if (rotMap.containsKey(ng))
 				v.addAll(rotMap.get(ng).getAllScripts((short)1));// 1 is warning
 		}
-		String message = new String("Recovery: "+type);
 		for (String s : v) {
 			Runnable r = new Runner(s+" "+message);
 			logger.info("Dispatching notification " + s + " " + message);
