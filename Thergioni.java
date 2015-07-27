@@ -745,6 +745,8 @@ class Thergioni {
 		List<String> nodeIPs = node.getIp();
 		logger.config("Node: " + nodeName);
 
+
+
 		/*
 		 * This part deals with the custom arguments per check per node
 		 */
@@ -775,7 +777,20 @@ class Thergioni {
 					/*
 					 * Deal with special chars
 					 * $h is for hostname (name in xml)
+					 * $p is for port
+					 * $v is for var
 					 */
+					if (node.getVar() != null) {
+						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$v", node.getVar());
+					} else {
+						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$v", "");
+					}
+					if (node.getPort() != null) {
+						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$p", node.getPort());
+					} else {
+						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$p", "");
+					}
+
 					String nodeTypeCheckModified = new String();
 					if (!nodeIPs.isEmpty()) {
 						for ( String ip : nodeIPs ) {
@@ -1461,7 +1476,7 @@ class Thergioni {
 		}
 
 		public String getHead(Handler h) {
-			return "<html><body>\n";
+			return "<html><head><meta charset=\"utf-8\"></head><body>\n";
 		}
 		public String getTail(Handler h) {
 			return "</body></html>\n";

@@ -38,6 +38,8 @@
 				<xs:element name="name" type="xs:string" minOccurs="1" maxOccurs="1"/>
 				<xs:element name="ip" type="xs:string" maxOccurs="unbounded"/>
 				<xs:element name="type" type="xs:string" maxOccurs="unbounded"/>
+				<xs:element name="var" type="xs:string" maxOccurs="1"/>
+				<xs:element name="port" type="xs:string" maxOccurs="1"/>
 				<xs:element name="checkargs" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 					<xs:element name="check" type="xs:string"/>
 					<xs:element name="args" type="xs:string"/>
