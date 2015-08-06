@@ -1285,6 +1285,7 @@ class Thergioni {
 			for (String reaction:reactions) {
 				r = new Runner(reaction);
 				logger.info(" + "+reaction);
+				webLog.info("Reaction initiated for "+type);
 				executor.execute(r);
 			}
 		}
