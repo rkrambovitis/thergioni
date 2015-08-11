@@ -1329,6 +1329,7 @@ class Thergioni {
 			case STATE_ERROR:
 			case STATE_WARN:
 				message = type + " transitioned to "+ stateToString(newState) +" state!";
+				break;
 			case STATE_NOTICE:
 			case STATE_OK:
 				message = "Recovery: "+type;
