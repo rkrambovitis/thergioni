@@ -437,19 +437,22 @@ class Thergioni {
 			}
 		}
 		String toScript = statusScript;
-		if (failedLevel == 0) {
-			failedType = ":)";
-		} else {
-			if (failedLevel == 4)
-				toScript = toScript + " URGENT ";
-			else if (failedLevel == 3)
-				toScript = toScript + " ERROR ";
-			else if (failedLevel == 2)
-				toScript = toScript + " WARNING ";
-			else if (failedLevel == 1)
-				toScript = toScript + " NOTICE ";
-		}
-		toScript = toScript + failedType;
+		if (failedLevel == 0)
+			failedType = "Super Green";
+
+		if (failedLevel == 4)
+			toScript += " URGENT ";
+		else if (failedLevel == 3)
+			toScript += " ERROR ";
+		else if (failedLevel == 2)
+			toScript += " WARNING ";
+		else if (failedLevel == 1)
+			toScript += " NOTICE ";
+		else
+			toScript += " OK ";
+
+		toScript += failedType;
+
 		writer.write("<div style=\"background-color:"+failedColors[failedLevel]+";\">"+failedType+"</div>\n");
 		writer.write("\n\t\t<script>parent.document.title=\"" + failedType + " - " + webTitle + "\"</script>");
 		writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+failedFavicons[failedLevel]+"'</script>");
