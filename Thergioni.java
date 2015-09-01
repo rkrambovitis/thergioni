@@ -47,6 +47,13 @@ class Thergioni {
 		stateMap = new HashMap<String, Short>();
 		defaultNotif = new ArrayList<String>();
 		rotMap = new HashMap<String,Rotater>();
+		failedColors = new String[5];
+		failedColors[0] = new String("greenyellow");
+		failedColors[1] = new String("antiquewhite");
+		failedColors[2] = new String("bisque");
+		failedColors[3] = new String("chocolate");
+		failedColors[4] = new String("crimson");
+		failedFavicons = new String[5];
 		loopCount=0;
 		threadCount=0;
 	}
@@ -323,29 +330,31 @@ class Thergioni {
 			logger.config("web_title: " + webTitle);
 
 			logger.fine("Setting web title and favicons");
-			faviconOk = new String("favicon.png");
-			faviconNotice = new String("notice.png");
-			faviconWarning = new String("warning.png");
-			faviconError = new String("error.png");
-			faviconUrgent = new String("urgent.png");
 			if (mySite.getFaviconOk() != null) 
-				faviconOk = mySite.getFaviconOk();
+				failedFavicons[0] = mySite.getFaviconOk();
+			else
+				failedFavicons[0] = new String("favicon.png");
+
 			if (mySite.getFaviconNotice() != null) 
-				faviconNotice = mySite.getFaviconNotice();
+				failedFavicons[1] = mySite.getFaviconNotice();
+			else
+				failedFavicons[1] = new String("notice.png");
+
 			if (mySite.getFaviconWarning() != null) 
-				faviconWarning = mySite.getFaviconWarning();
+				failedFavicons[2] = mySite.getFaviconWarning();
+			else
+				failedFavicons[2] = new String("warning.png");
+
 			if (mySite.getFaviconError() != null) 
-				faviconError = mySite.getFaviconError();
+				failedFavicons[3] = mySite.getFaviconError();
+			else
+				failedFavicons[3] = new String("error.png");
+
 			if (mySite.getFaviconUrgent() != null) 
-				faviconUrgent = mySite.getFaviconUrgent();
+				failedFavicons[4] = mySite.getFaviconUrgent();
+			else
+				failedFavicons[4] = new String("urgent.png");
 			
-			logger.config("favicon_ok: " + faviconOk);
-			logger.config("favicon_notice: " + faviconNotice);
-			logger.config("favicon_warning: " + faviconWarning);
-			logger.config("favicon_error: " + faviconError);
-			logger.config("favicon_urgent: " + faviconUrgent);
-
-
 			logger.info("Initialization Complete");
 			argMap.clear();
 			checkMap.clear();
@@ -411,42 +420,25 @@ class Thergioni {
 		String failedType = new String();
 		for (String type : topTypes) {
 			if (getState(type) == STATE_URGENT) {
-				writer.write("<div style=\"background-color:crimson;\">"+type+": URGENT</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"[U]"+type+" - "+webTitle+"\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconUrgent+"'</script>");
 				failedLevel = 4;
-				failedType = type;
-				somethingFailed=true;
-				break;
-			} else if ((getState(type) == STATE_ERROR) && failedLevel < 3) {
-				writer.write("<div style=\"background-color:chocolate;\">"+type+": Error</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"[E]"+type+" - "+webTitle+"\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconError+"'</script>");
-				somethingFailed=true;
-				failedType = type;
-				failedLevel = 3;
-			} else if ((getState(type) == STATE_WARN) && failedLevel < 2) {
-				writer.write("<div style=\"background-color:bisque;\">"+type+": Warning</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"[W]"+type+" - "+webTitle+"\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconWarning+"'</script>");
-				somethingFailed=true;
-				failedType = type;
-				failedLevel = 2;
-			} else if ((getState(type) == STATE_NOTICE) && failedLevel == 0) {
-				writer.write("<div style=\"background-color:antiquewhite;\">"+type+": Notice</div>\n");
-				writer.write("\n\t\t<script>parent.document.title=\"[N]"+type+" - "+webTitle+"\"</script>");
-				writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconNotice+"'</script>");
-				somethingFailed=true;
-				failedType = type;
-				failedLevel = 1;
+				failedType += "[U]"+type+" ";
+			} else if (getState(type) == STATE_ERROR) {
+				if (failedLevel < 3)
+					failedLevel = 3;
+				failedType += "[E]"+type+" ";
+			} else if (getState(type) == STATE_WARN) {
+				if (failedLevel < 2)
+					failedLevel = 2;
+				failedType += "[W]"+type+" ";
+			} else if (getState(type) == STATE_NOTICE) {
+				if (failedLevel == 0)
+					failedLevel = 1;
+				failedType += "[N]"+type+" ";
 			}
 		}
 		String toScript = statusScript;
-		if (!somethingFailed) {
-			writer.write("<div style=\"background-color:greenyellow;\">SUPER GREEN :)</div>\n");
-			writer.write("\n\t\t<script>parent.document.title=\""+webTitle+"\"</script>");
-			writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+faviconOk+"'</script>");
-			toScript = toScript + " OK ";
+		if (failedLevel == 0) {
+			failedType = ":)";
 		} else {
 			if (failedLevel == 4)
 				toScript = toScript + " URGENT ";
@@ -456,9 +448,11 @@ class Thergioni {
 				toScript = toScript + " WARNING ";
 			else if (failedLevel == 1)
 				toScript = toScript + " NOTICE ";
-
-			toScript = toScript + failedType;
 		}
+		toScript = toScript + failedType;
+		writer.write("<div style=\"background-color:"+failedColors[failedLevel]+";\">"+failedType+"</div>\n");
+		writer.write("\n\t\t<script>parent.document.title=\"" + failedType + " - " + webTitle + "\"</script>");
+		writer.write("\n\t\t<script>parent.document.querySelector('#favicon').href = '"+failedFavicons[failedLevel]+"'</script>");
 		Runner r = new Runner(toScript);
 		executor.execute(r);
 		writer.write("\n\t</body>\n</html>");
@@ -1917,6 +1911,8 @@ class Thergioni {
 	private List<String> defaultNotif;
 	private Map<String, Rotater> rotMap;
 	private Map<String, Short> stateMap;
+	private String[] failedColors;
+	private String[] failedFavicons;
 	private static final short ACCUMNONE = 0;
 	private static final short ACCUMWARN = 1;
 	private static final short ACCUMERROR = 2;
