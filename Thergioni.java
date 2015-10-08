@@ -23,7 +23,7 @@ class Thergioni {
 	public Thergioni() {
 		of = new ObjectFactory();	
 		checkMap = new HashMap<String,List<String>>();
-		argMap = new HashMap<String,String>();
+		argMap = new HashMap<String,List<String>>();
 		typeMap = new HashMap<String,Vector<String>>();
 		typeDeps = new HashMap<String,List<String>>();
 		nodeCheckMap = new HashMap<String,Vector<String>>();
@@ -762,10 +762,9 @@ class Thergioni {
 					/*
 					 * Check for special arguments and apply them
 					 */
-					String specialCheckArgs = argMap.get(nodeName+"_" + nodeTypeCheck);
-					if (specialCheckArgs != null) {
-						nodeTypeCheck = nodeTypeCheck+" "+specialCheckArgs;
-					}
+					List<String> specialCheckArgs = argMap.get(nodeName+"_" + nodeTypeCheck);
+					if (specialCheckArgs.isEmpty())
+						specialCheckArgs.add(new String());
 
 					/*
 					 * Add checkPath
@@ -788,17 +787,20 @@ class Thergioni {
 						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$p", "");
 					}
 
-					String nodeTypeCheckModified = new String();
-					if (!nodeIPs.isEmpty()) {
-						for ( String ip : nodeIPs ) {
-							nodeTypeCheckModified=nodeTypeCheck.replaceAll("\\$h", ip);
+					for (String args : specialCheckArgs) {
+						String nodeTypeCheckArgs = nodeTypeCheck+" "+args;
+						String nodeTypeCheckModified = new String();
+						if (!nodeIPs.isEmpty()) {
+							for ( String ip : nodeIPs ) {
+								nodeTypeCheckModified=nodeTypeCheckArgs.replaceAll("\\$h", ip);
+								logger.config(" + " + nodeTypeCheckModified);
+								mapCheck(nodeName, nodeType, nodeTypeCheckModified);
+							}
+						} else {
+							nodeTypeCheckModified=nodeTypeCheckArgs.replaceAll("\\$h", nodeName);
 							logger.config(" + " + nodeTypeCheckModified);
 							mapCheck(nodeName, nodeType, nodeTypeCheckModified);
 						}
-					} else {
-						nodeTypeCheck=nodeTypeCheck.replaceAll("\\$h", nodeName);
-						logger.config(" + " + nodeTypeCheck);
-						mapCheck(nodeName, nodeType, nodeTypeCheck);
 					}
 				}
 			} else {
@@ -1412,7 +1414,7 @@ class Thergioni {
 			try {
 				Process process = Runtime.getRuntime().exec(runme);
 				try {
-					System.err.println(runme);
+					//System.err.println(runme);
 					process.waitFor();
 				} catch (InterruptedException e) {
 					System.err.println(e.getMessage());
@@ -1865,7 +1867,7 @@ class Thergioni {
 	// Maps type to deps
 	private Map<String,List<String>> typeDeps;
 	// Maps node_check to special args (used at initialization)
-	private Map<String,String> argMap;
+	private Map<String,List<String>> argMap;
 	// Maps type to default checks (used at initialization)
 	private Map<String,List<String>> checkMap;
 	// Stores last notification time per type

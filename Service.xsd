@@ -42,7 +42,7 @@
 				<xs:element name="port" type="xs:string" maxOccurs="1"/>
 				<xs:element name="checkargs" maxOccurs="unbounded"> <xs:complexType> <xs:sequence>
 					<xs:element name="check" type="xs:string"/>
-					<xs:element name="args" type="xs:string"/>
+					<xs:element name="args" type="xs:string" maxOccurs="unbounded"/>
 				</xs:sequence> </xs:complexType> </xs:element>
 			</xs:sequence> </xs:complexType> </xs:element>
 		</xs:sequence> </xs:complexType> </xs:element>
