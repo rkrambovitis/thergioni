@@ -134,11 +134,40 @@ class Thergioni {
 			} else {
 				setupLogger(mySite.getLogFile(),mySite.getLogLevel(),webPath+mySite.getWebFile());
 			}
-                        logger.config("web_path: " + webPath);
-
 
 			logger.config("Site Name : " +mySite.getName());
 			checkPath = new String(mySite.getCheckpath());
+
+			logger.config("web_path: " + webPath);
+
+			logger.fine("Creating web config file");
+			try {
+				String configFile = webPath;
+				if (mySite.getWebConfig() == null)
+					configFile = configFile + "thergioni_config.html";
+				else
+					configFile = configFile + mySite.getWebConfig();
+				logger.config("web_config: " + configFile);
+
+				FileHandler fhc = new FileHandler(configFile, 32768, 1, false);
+				webConf = Logger.getLogger("WebConfOutput");
+				webConf.setLevel(Level.ALL);
+				fhc.setFormatter(new WebConfFormatter());
+				webConf.setUseParentHandlers(false);
+				webConf.addHandler(fhc);
+			} catch (IOException e) {
+				System.err.println("Cannot create web conf file");
+				System.exit(1);
+			}
+
+			logger.fine("Setting web status file path");
+			if (mySite.getWebStatus() == null) {
+				logger.warning("web_status not set, using default = thergioni_web_status.html");
+				statusFilePath = new String(webPath + "thergioni_web_status.html");
+			} else {
+				statusFilePath = webPath + mySite.getWebStatus();
+			}
+			logger.config("web_status path: " + statusFilePath);
 
 //			logger.config("threads : " + threads);
 //			threads = mySite.getParallelChecks().intValue();
@@ -273,26 +302,6 @@ class Thergioni {
 				logger.severe("No default Notification set !");
 			}
 
-
-			logger.fine("Dumping config to web config file");
-			try {
-				String configFile = webPath;
-				if (mySite.getWebConfig() == null) 
-					configFile = configFile + "thergioni_config.html";
-				else
-					configFile = configFile + mySite.getWebConfig();
-
-				FileHandler fhc = new FileHandler(configFile, 32768, 1, false);
-				webConf = Logger.getLogger("WebConfOutput");
-				webConf.setLevel(Level.ALL);
-				fhc.setFormatter(new WebConfFormatter());
-				webConf.setUseParentHandlers(false);
-				webConf.addHandler(fhc);
-			} catch (IOException e) {
-				System.err.println("Cannot create web file");
-				System.exit(1);
-			}
-
 			if (mySite.getAccumTimeError() == null) {
                                 logger.warning("accum_time_error not set, using default = 60 (mins)");
                                 defAccumTimeError=60;
@@ -300,16 +309,6 @@ class Thergioni {
                                 defAccumTimeError = mySite.getAccumTimeError().intValue();
                         }
                         logger.config("accumulative time error (mins) : " + defAccumTimeError);
-
-
-			logger.fine("Setting web status file path");
-			if (mySite.getWebStatus() == null) {
-				logger.warning("web_status not set, using default = thergioni_web_status.html");
-				statusFilePath = new String(webPath + "thergioni_web_status.html");
-			} else {
-				statusFilePath = webPath + mySite.getWebStatus();
-			}
-			logger.config("web_status path: " + statusFilePath);
 
 			logger.fine("Setting status script");
 			if (mySite.getStatusScript() == null) {
@@ -359,7 +358,9 @@ class Thergioni {
 			argMap.clear();
 			checkMap.clear();
 		} catch (Exception fnfe) {
-			System.err.println(fnfe);
+			fnfe.printStackTrace();
+			//System.err.println(fnfe);
+			System.exit(1);
 			//logger.severe(fnfe.toString());
 		}
 	}
@@ -742,8 +743,6 @@ class Thergioni {
 		List<String> nodeIPs = node.getIp();
 		logger.config("Node: " + nodeName);
 
-
-
 		/*
 		 * This part deals with the custom arguments per check per node
 		 */
@@ -760,11 +759,13 @@ class Thergioni {
 			if ( typeCheck != null ) {
 				for ( String nodeTypeCheck : typeCheck ) {
 					/*
-					 * Check for special arguments and apply them
+					 * Check for special arguments
 					 */
-					List<String> specialCheckArgs = argMap.get(nodeName+"_" + nodeTypeCheck);
-					if (specialCheckArgs.isEmpty())
-						specialCheckArgs.add(new String());
+					List<String> specialCheckArgs = new ArrayList<String>();
+					if (argMap.containsKey(nodeName + "_" + nodeTypeCheck))
+						specialCheckArgs = argMap.get(nodeName+"_" + nodeTypeCheck);
+					else
+						specialCheckArgs.add(new String(""));
 
 					/*
 					 * Add checkPath
