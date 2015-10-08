@@ -1,2 +1,5 @@
 #!/bin/bash
-echo "nrpe checking"
+stuff=`echo $@ | cut -d\  -f1-`
+echo -ne "check_nrpe $stuff: "
+/usr/lib/nagios/plugins/check_nrpe $stuff
+exit $?

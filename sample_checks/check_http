@@ -1,4 +1,76 @@
 #!/bin/bash
+path=" "
+timeOut="3"
+erroneous=false
+maxSize="0"
+minSize="0"
 
-sleep 10s
-echo HTTP is ok
+function usage {
+	echo "usage $0 -h<hostname> (-u<url_path> -s<min_size> -S<max_size> -i<ip> -t<timeout> -m<max_exec_time>)"
+	exit 1
+}
+
+
+for arg in "$@" ; do
+        flag=`echo ${arg:0:2}`
+        value=`echo ${arg:2}`
+        case $flag in
+                "-h")
+                        host="$value"
+                ;;
+		"-u")
+			path="$value"
+		;;
+		"-s")
+			minSize="$value"
+		;;
+		"-S")
+			maxSize="$value"
+		;;
+		"-i")
+			ip="$value"
+		;;
+		"-t")
+			timeOut="$value"
+		;;
+		"--help")
+			usage
+		;;
+        esac
+done
+
+if [ -z "$1" ] || [ -z "$host" ] ; then
+	usage
+fi
+
+logtime=`date +%s`
+if [ -z "$ip" ] ; then
+	result=`/usr/bin/curl $host$path -o /dev/null 2>&1 -w %{size_download} --silent -m $timeOut`
+	text="$host$path size is $result"
+else
+	result=`/usr/bin/curl -H "Host:$host" $ip$path -o /dev/null 2>&1 -w %{size_download} --silent -m $timeOut`
+	text="$host$path from $ip size is $result"
+fi
+
+if [ "$?" = 52 ] ; then
+	erroneous=true
+	text="$ip $host$path (Empty Response)"
+	savefile=0
+elif [ "$result" = 0 ] ; then
+	erroneous=true
+	text="$ip $host$path (timeout)"
+	savefile=0
+elif [ "$result" -lt "$minSize" ] && [ "$minSize" -gt 0 ] ; then
+	erroneous=true
+	savefile=1
+elif [ "$result" -gt "$maxSize" ] && [ "$maxSize" -gt 0 ] ; then
+	erroneous=true
+	savefile=1
+fi
+
+echo $text
+if $erroneous ; then
+	exit 1
+fi
+	
+exit 0

@@ -25,7 +25,7 @@
 
 	<!-- A script to call on every run with status.-->
 	<!-- arguments are level (i.e. OK, or ERROR) and service (if not OK) -->
-        <status_script>$cp/send_tipboard</status_script>
+        <status_script>$cp/send_echo</status_script>
 
 	<!-- Title of the webpage, replacing parent.document.title -->
         <web_title>Thergioni</web_title>
@@ -198,8 +198,14 @@
 	
 	<type>
 		<name>dns</name>
-		<check>$cp/check_dns -s $h -H www.thergioni.com</check>
+		<check>$cp/check_dns -h$h -lwww.thergioni.com</check>
 		<top>false</top>
+	</type>
+
+	<type>
+		<name>mysql</name>
+		<check>$cp/check_mysql</check>
+		<top>true</top>
 	</type>
 
 	<type>
@@ -259,6 +265,19 @@
 				<args> -P 1234 -C public </args>
 			</checkargs>
 
+		</node>
+
+		<node>
+			<name>mysql</name>
+			<type>mysql</type>
+			<!-- Using multiple args entries are treated as separate checks -->
+			<!-- i.e. example below will check all 3 servers -->
+			<checkargs>
+				<check>$cp/check_mysql</check>
+				<args> -h127.0.0.1 -P3306 -S</args>
+				<args> -h127.0.0.2 -P3307 </args>
+				<args> -h192.168.1.123 -ustatus -pinsecure </args>
+			</checkargs>
 		</node>
 		<node>
 			<name>makeb</name>

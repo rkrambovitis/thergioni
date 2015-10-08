@@ -1,0 +1,6 @@
+#!/bin/bash
+message="$@"
+message2=`echo $message | cut -d\  -f2- | sed -e 's/"//g'`
+message3=`echo $message2 | sed -e s/\ /\+/g`
+
+/usr/bin/curl "https://6970123456:super_secure@www.prosms.gr/secure/api/index.php?originator=thergioni&mobile_number=$1&text=$message3"

@@ -1,2 +1,35 @@
 #!/bin/bash
-echo DNS is OK
+host='localhost'
+lookup='localhost'
+
+function usage {
+	echo "usage $0 -h<host> (-l<hostname_to_lookup>)"
+	exit 1
+}
+
+
+for arg in "$@" ; do
+        flag=`echo ${arg:0:2}`
+        value=`echo ${arg:2}`
+        case $flag in
+                "-h")
+                        host="$value"
+                ;;
+		"-l")
+			lookup="$value"
+		;;
+		"--help")
+			usage
+		;;
+        esac
+done
+
+dig +short +noanswer +time=3 +retries=0 +tries=1 A $lookup @$host > /dev/null
+if [ $? -eq 0 ] ; then
+	echo "DNS lookup $lookup @$host Success"
+	exit 0
+else
+	echo "DNS lookup $lookup @$host Failed"
+	exit 1
+fi
+

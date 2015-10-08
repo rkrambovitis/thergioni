@@ -1,2 +1,79 @@
 #!/bin/bash
-echo OID i.am.cool.and.i.am.useful is 0
+commun='public'
+warn='20'
+crit="50"
+invert=false
+
+for arg in "$@" ; do
+	flag=`echo ${arg:0:2}`
+	value=`echo ${arg:2}`
+	case $flag in 
+		"-h")
+			host="$value"
+		;;
+		"-w")
+			warn="$value"
+		;;
+		"-c")
+			crit="$value"
+		;;
+		"-C")
+			commun="$value"
+		;;
+		"-o")
+			oid="$value"
+		;;
+		"-i")
+			invert=true
+		;;		
+		"-m")
+			mibFile="-m$value"
+		;;
+		"-t")
+			expect="$value"
+		;;
+		"-P")
+			port=":$value"
+		;;
+	esac
+done
+
+if [ -z $host ] || [ -z $oid ] ; then
+	echo "usage $0 -h<host> -o<oid> (-w<warning_level>|-c<critical_level>|-C<public_community>|-P<port>|-i|-t<expected_value>|-m<Mib_file>)"
+	exit 2
+fi
+
+result=`/usr/bin/snmpget -v2c -c $commun $host$port $oid $mibFile -Oqtv`
+
+if [ -z "$expect" ] ; then
+	if $invert ; then
+		if [ "$result" -lt $crit ] 2>/dev/null ; then
+			echo "Error, $oid for $host is $result"
+			exit 2;
+		elif [ "$result" -lt $warn ] 2>/dev/null ; then
+			echo "Warning, $oid for $host is $result"
+			exit 1;
+		else
+			echo "OK, $oid for $host is $result"
+		fi
+	else
+		if [ "$result" -lt $warn ] 2>/dev/null ; then
+			echo "OK, $oid for $host is $result"
+			exit 0
+		elif [ "$result" -lt $crit ] 2>/dev/null ; then
+			echo "Warning, $oid for $host is $result"
+			exit 1
+		else 
+			echo "Error, $oid for $host is $result"
+			exit 2
+		fi
+	fi
+else
+	if [ "$expect" = "$result" ] ; then
+		echo "OK, $oid for $host is $result"
+		exit 0;
+	else
+		echo "Error, $oid for $host is $result"
+		exit 2;
+	fi
+fi
