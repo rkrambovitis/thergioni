@@ -225,6 +225,10 @@ class Thergioni {
 				defAccumThreshWarn=0;
 			} else {
 				defAccumThreshWarn = mySite.getAccumThreshWarn().intValue();
+				if (defAccumThreshWarn <= defNotifThresh) {
+					logger.warning("accum_thresh_warn must be greater than notif_thresh. using default = 0 (disabled)");
+					defAccumThreshWarn=0;
+				}	
 			}
 			logger.config("accumulative theshold warning : " + defAccumThreshWarn);
 
@@ -233,6 +237,10 @@ class Thergioni {
 				defAccumThreshError=0;
 			} else {
 				defAccumThreshError = mySite.getAccumThreshError().intValue();
+				if (defAccumThreshError <= defNotifThresh) {
+					logger.warning("accum_thresh_error must be greater than notif_thresh. using default = 0 (disabled)");
+					defAccumThreshError=0;
+				}
 			}
 			logger.config("accumulative theshold error : " + defAccumThreshError);
 
@@ -988,26 +996,10 @@ class Thergioni {
 				}
 			}
 		}
-/*
-		} else {
-			message = type.toUpperCase() + "("+results[0]+"ok)";
-			longMessage = type.toUpperCase() + "("+ results[0]+"ok)";
-		}
-*/
-
 		
 		if (longOutputTypes.contains(type)) {
 			message = longMessage;
 		}
-
-/*
-		boolean snoozeLog = false;
-		if (snoozeMap.containsKey(type) && getState(type) != STATE_OK) {
-			if (snoozeMap.get(type).snooze()) {
-				snoozeLog = true;
-			}
-		}
-*/
 
 		if (results[1] >= tte) {
 			webLog.severe(longMessage);
@@ -1108,12 +1100,14 @@ class Thergioni {
 
 		String mfc = message.substring(type.length()+1,type.length()+2);
 		short accum = 0;
-		if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("W")) {
-			if (accumMap.get(type).isDisabled()) {
-				logger.fine("Accum -> disabled for "+type);
-			} else {
-				accum = accumMap.get(type).fail(true);
-				logger.info("Accum -> " + type + " ("+ accum +") "+ accumMap.get(type).getMessage(accum));
+		if (getState(type) < STATE_WARN) {
+			if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("W")) {
+				if (accumMap.get(type).isDisabled()) {
+					logger.fine("Accum -> disabled for "+type);
+				} else {
+					accum = accumMap.get(type).fail(true);
+					logger.info("Accum -> " + type + " ("+ accum +") "+ accumMap.get(type).getMessage(accum));
+				}
 			}
 		}
 
