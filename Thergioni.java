@@ -96,7 +96,7 @@ class Thergioni {
 			logger.addHandler(fh);
 
 		} catch (IOException e) {
-			System.err.println("Cannot create log file");
+			System.err.println("Cannot create log file: "+fileName);
 			System.exit(1);
 		}
 		try {
@@ -108,7 +108,7 @@ class Thergioni {
 			webLog.setUseParentHandlers(false);
 			webLog.addHandler(fh2);
 		} catch (IOException e) {
-			System.err.println("Cannot create web file");
+			System.err.println("Cannot create web file: "+webFile);
 			System.exit(1);
 		}
 	}
@@ -1101,7 +1101,7 @@ class Thergioni {
 		String mfc = message.substring(type.length()+1,type.length()+2);
 		short accum = 0;
 		if (getState(type) < STATE_WARN) {
-			if (mfc.equals("N") || mfc.equals("F") || mfc.equals("U") || mfc.equals("W")) {
+			if (mfc.equals("F") || mfc.equals("U") || mfc.equals("W")) {
 				if (accumMap.get(type).isDisabled()) {
 					logger.fine("Accum -> disabled for "+type);
 				} else {
