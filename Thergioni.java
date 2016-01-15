@@ -717,7 +717,7 @@ class Thergioni {
 		thresholds[3]=nr;
 		logger.config(" +- urgent threshold: " + ut);
 		thresholds[4]=ut;
-		logger.config(" +- react threshold: " + ut);
+		logger.config(" +- react threshold: " + rt);
 		thresholds[5]=rt;
 		logger.config(" +- accumulative threshold warning: " + atw);
 		logger.config(" +- accumulative threshold error: " + ate);
@@ -1230,6 +1230,8 @@ class Thergioni {
 				if (mfc.equals("U"))
 					react(type, executor);
 				else if (mfc.equals("F"))
+					react(type, executor);
+				else if (mfc.equals("W"))
 					react(type, executor);
 			}
 
