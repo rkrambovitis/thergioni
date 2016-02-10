@@ -8,6 +8,7 @@ import java.util.concurrent.*;
 import java.util.logging.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.time.LocalDateTime;
 
 class Thergioni {
 	public static void main(String args[]) {
@@ -17,6 +18,7 @@ class Thergioni {
 			System.exit(0);
 		}
 		myThergioni.readXml(args[0]);
+		myThergioni.createRotationNotifier();
 		myThergioni.enterMainLoop();
 	}
 
@@ -371,6 +373,11 @@ class Thergioni {
 			System.exit(1);
 			//logger.severe(fnfe.toString());
 		}
+	}
+
+	private void createRotationNotifier() {
+		RotationNotifier rn = new RotationNotifier();
+		new Thread(rn).start();
 	}
 
 	private void dumpType(String type) {
@@ -1651,7 +1658,7 @@ class Thergioni {
 			Calendar c = Calendar.getInstance();
 			int dayOfWeek = c.get(Calendar.DAY_OF_WEEK);
 			int hrOfDay = c.get(Calendar.HOUR_OF_DAY);
-			logger.fine("Day: " + dayOfWeek + " - hr: "+hrOfDay);
+			logger.info("Day: " + dayOfWeek + " - hr: "+hrOfDay);
 
 			int rotThisWeek = rotDays.headSet(new Integer(dayOfWeek)).size();
 			if (rotDays.contains(dayOfWeek) && (hrOfDay >= rotTime))
@@ -1660,13 +1667,15 @@ class Thergioni {
 			int who = (rotations + rotThisWeek) % oncNames.size();
 
 			String onc = oncNames.get(who);
-			logger.fine("Weeks since epoch: "+ weeks);
+			logger.info("Weeks since epoch: "+ weeks);
 			String exc = (hrOfDay >= rotTime) ? "has" : "has not yet";
-			logger.fine("Rotation time "+ exc +" exceeded rotation hour ("+rotTime+")");
-			logger.fine("Rotations this week: "+rotThisWeek);
-			logger.fine("Rotations (= weeks since epoch * rotPerWeek + rotThisWeek): "+ rotations);
-			logger.fine("Rotations % oncall_Count "+ who);
-			logger.fine("which is... " + onc);
+			logger.info("Rotation time "+ exc +" exceeded rotation hour ("+rotTime+")");
+			logger.info("Rotations per week: "+rotPerWeek);
+			logger.info("Rotations this week: "+rotThisWeek);
+			logger.info("Rotations (= weeks since epoch * rotPerWeek + rotThisWeek): "+ (rotations+rotThisWeek));
+			logger.info("On call count: " +oncNames.size());
+			logger.info("Rotations % oncall_Count: "+ who);
+			logger.info("which is... " + onc);
 			return oncMap.get(onc);
 		}
 		public void setRemind(List<String> rem) {
@@ -1699,6 +1708,41 @@ class Thergioni {
 		private Vector<String> warnScripts;
 		private Vector<String> errorScripts;
 	}
+
+	private class RotationNotifier implements Runnable {
+                public RotationNotifier() {
+			rotNotifierMap = new HashMap<String, String>();
+                }
+
+                public void run() {
+			LocalDateTime now = LocalDateTime.now();
+			int minute = now.getMinute();
+			int toSleep = (60 - minute)*60000;
+			while (true) {
+				checkRotations();
+				try {
+					Thread.sleep(toSleep);
+				} catch (InterruptedException e) {
+					System.err.println("Ooops: "+e.getCause());
+				}
+				toSleep = 3600000;
+			}
+                }
+
+		private void checkRotations() {
+			for (String k : rotMap.keySet()) {
+				String ocName = rotMap.get(k).getOnCall().getName();
+				if (!ocName.equals(rotNotifierMap.get(k))) {
+					String output = "Oncall changed for "+k+" from " + rotNotifierMap.get(k) + " to "+ocName;
+					logger.info(output);
+					webLog.info(output);
+				}
+                        }
+		}
+
+		private Map<String, String> rotNotifierMap;
+        }
+
 
 	private class OnCall {
 		public OnCall(String nm, String em, String num, String xm, boolean elvOnly) {
