@@ -1736,6 +1736,7 @@ class Thergioni {
 					String output = "Oncall changed for "+k+" from " + rotNotifierMap.get(k) + " to "+ocName;
 					logger.info(output);
 					webLog.info(output);
+					rotNotifierMap.put(k, ocName);
 				}
                         }
 		}
