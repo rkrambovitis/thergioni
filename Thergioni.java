@@ -1651,6 +1651,9 @@ class Thergioni {
 		public OnCall getOnCall() {
 			//This has to calculate who's turn it is. Or via thread + sleep etc keep track of who's turn it is.
 			long currentTime = System.currentTimeMillis();
+			long sundayOffset = new GregorianCalendar(1970,0,4).getTimeInMillis();
+			logger.info("CurrentTime: "+currentTime+" SundayOffset: "+sundayOffset);
+			currentTime -= sundayOffset;
 			long week = 604800000l;
 			int weeks = (int)(currentTime / week);
 			int rotations = (int)(weeks * rotPerWeek);
