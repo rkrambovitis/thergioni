@@ -40,6 +40,7 @@ class Thergioni {
 		//errorScripts = new Vector<String>();
 		warnMap = new HashMap<String,Vector<String>>();
 		errorMap = new HashMap<String,Vector<String>>();
+		spamMap = new HashMap<String,Vector<String>>();
 		reactionMap = new HashMap<String,Vector<String>>();
 		notifyMap = new HashMap<String,List<String>>();
 		typeThresholds = new HashMap<String,int[]>();
@@ -496,6 +497,8 @@ class Thergioni {
 		}
 		Vector<String> warnScripts = new Vector<String>();
 		Vector<String> errorScripts = new Vector<String>();
+		Vector<String> spamScripts = new Vector<String>();
+
 		List<String> wrscr = notification.getWarningScript();
 		for (String w : wrscr) {
 			logger.config("+ Warning Script: " + w);
@@ -509,8 +512,17 @@ class Thergioni {
 			e=e.replaceAll("\\$cp", checkPath);
 			errorScripts.addElement(e);
 		}
+
+		List<String> spmscr = notification.getSpamScript();
+		for (String e : spmscr) {
+			logger.config("+ Spam Script: " + e);
+			e=e.replaceAll("\\$cp", checkPath);
+			spamScripts.addElement(e);
+		}
+
 		warnMap.put(notification.getName(), warnScripts);
 		errorMap.put(notification.getName(), errorScripts);
+		spamMap.put(notification.getName(), spamScripts);
 		
 		// NEW -> the rotation crap
 		Site.Notification.Rotation rot = notification.getRotation();
@@ -1105,6 +1117,15 @@ class Thergioni {
 			return;
 		}
 
+		Vector<String> v = new Vector<String>();
+		ArrayList<String> notifyGroups = new ArrayList<String>();
+
+		if (!notifyMap.containsKey(type)) {
+			notifyGroups.addAll(defaultNotif);
+		} else {
+			notifyGroups.addAll(notifyMap.get(type));
+		}
+
 		String mfc = message.substring(type.length()+1,type.length()+2);
 		short accum = 0;
 		if (getState(type) < STATE_WARN) {
@@ -1127,6 +1148,7 @@ class Thergioni {
 				notifyStateChange(type, executor, STATE_OK);
 				setState(type, STATE_OK);
 			}
+
 /*
 		} else if ((!mfc.equals("W"))&&(!mfc.equals("F"))&&(!mfc.equals("U"))&&(!mfc.equals("N"))) {
 			sentWNotif.remove("W_"+type);
@@ -1189,16 +1211,8 @@ class Thergioni {
 			long timeNow = System.currentTimeMillis();
 			long timeDiff = timeNow - lastMessage;
 
-			ArrayList<String> notifyGroups = new ArrayList<String>();
-
-			if (!notifyMap.containsKey(type)) {
-				notifyGroups.addAll(defaultNotif);
-			} else {
-				notifyGroups.addAll(notifyMap.get(type));	
-			}
 
 
-			Vector<String> v = new Vector<String>();
 			logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+" sn%repeat:"+sn%notifRepeat+")");
 			//boolean hitRepeatThresh = ((sn % notifRepeat) == notifThresh || sn == notifThresh);
 			boolean hitRepeatThresh = (((sn - notifThresh) % notifRepeat) == 0);
@@ -1264,20 +1278,24 @@ class Thergioni {
 				message = "Accumulative "+foo+": " + type + " (" + accumMap.get(type).getMessage(accum)+")";
 				accumMap.get(type).reset(accum);
 				lastNotif.put(key,timeNow);
-			} else {
-				return;
 			}
+
 			if (flapping) {
 				webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
 				logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
-				return;
-			}
-			for (String s : v) {
-				Runnable r = new Runner(s+" "+message);
-				logger.info("Dispatching notification " + s + " " + message);
-				executor.execute(r);		
 			}
 		}
+
+		for (String ng : notifyGroups) {
+			v.addAll(spamMap.get(ng));
+		}
+
+		for (String s : v) {
+			Runnable r = new Runner(s+" "+message);
+			logger.info("Dispatching notification " + s + " " + message);
+			executor.execute(r);
+		}
+
 	} 
 
 	private void react(String type, Executor executor) {
@@ -1343,7 +1361,7 @@ class Thergioni {
 		if (!notifyMap.containsKey(type)) {
 			notifyGroups.addAll(defaultNotif);
 		} else {
-			notifyGroups.addAll(notifyMap.get(type));	
+			notifyGroups.addAll(notifyMap.get(type));
 		}
 
 		Vector<String> v = new Vector<String>();
@@ -1935,6 +1953,7 @@ class Thergioni {
 	private String checkPath;
 	private Map<String,Vector<String>> warnMap;
 	private Map<String,Vector<String>> errorMap;
+	private Map<String,Vector<String>> spamMap;
 	private Map<String,List<String>> notifyMap;
 	private Map<String,TypeAccum> accumMap;
 	private Map<String,Snooze> snoozeMap;
