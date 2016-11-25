@@ -947,6 +947,8 @@ class Thergioni {
 			} catch (CancellationException|InterruptedException|ExecutionException e) {
 				System.err.println("Exception during check: " + e);
 				logger.severe("Exception during check: " +e);
+				results[1]+=1;
+				failedOutput=(""+e.getCause());
 			}
 		}
 		if (results[1] == 0) {
