@@ -152,7 +152,7 @@ class Thergioni {
 					configFile = configFile + mySite.getWebConfig();
 				logger.config("web_config: " + configFile);
 
-				FileHandler fhc = new FileHandler(configFile, 32768, 1, false);
+				FileHandler fhc = new FileHandler(configFile, 512000, 1, false);
 				webConf = Logger.getLogger("WebConfOutput");
 				webConf.setLevel(Level.ALL);
 				fhc.setFormatter(new WebConfFormatter());
