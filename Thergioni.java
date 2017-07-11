@@ -179,9 +179,9 @@ class Thergioni {
 			}
 			logger.config("web_status path: " + statusFilePath);
 
-      String dbName = "thergioni-slo.db";
+      String dbName = "thergioni-sl.db";
       if (mySite.getDbName() == null) {
-        logger.warning("db_name not set. Using default = thergioni-slo.db");
+        logger.warning("db_name not set. Using default = thergioni-sl.db");
       } else {
         dbName = mySite.getDbName();
       }
@@ -705,7 +705,7 @@ class Thergioni {
 		 * nr - number of failures after which is should notify again
 		 */
 
-		int ttw, tte, ttslo, nt, nr, ut, atw, ate, atmw, atme, rt;
+		int ttw, tte, ttsl, nt, nr, ut, atw, ate, atmw, atme, rt;
 		int[] thresholds = new int[7];
 
     try {
