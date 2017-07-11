@@ -992,7 +992,9 @@ class Thergioni {
 			}
 		}
 
-    updateSloDb(type, results[1]);
+    if (topTypes.contains(type)) {
+      updateSloDb(type, results[1]);
+    }
 
 		if (results[1] == 0) {
 			//all OK, just return.
