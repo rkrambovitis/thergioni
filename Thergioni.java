@@ -178,13 +178,13 @@ class Thergioni {
 			}
 			logger.config("web_status path: " + statusFilePath);
 
-      dbName = "thergioni-slo.db";
+      String dbName = "thergioni-slo.db";
       if (mySite.getDbName() == null) {
         logger.warning("db_name not set. Using default = thergioni-slo.db");
       } else {
         dbName = mySite.getDbName();
       }
-      connection = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+      setupDb(dbName);
 
 //		logger.config("threads : " + threads);
 //		threads = mySite.getParallelChecks().intValue();
@@ -390,6 +390,13 @@ class Thergioni {
 			//logger.severe(fnfe.toString());
 		}
 	}
+
+  private void setupDb(String dbName) throws SQLException {
+      connection = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+      Statement statement = connection.createStatement();
+      statement.setQueryTimeout(30);
+      statement.execute("CREATE TABLE IF NOT EXISTS slo (type TEXT PRIMARY KEY, dt INTEGER, up INTEGER, down INTEGER);");
+  }
 
 	private void createRotationNotifier() {
 		RotationNotifier rn = new RotationNotifier();
@@ -2016,5 +2023,4 @@ class Thergioni {
 	private static final short STATE_URGENT = 4;
 
   private Connection connection;
-  private String dbName;
 }
