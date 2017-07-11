@@ -729,9 +729,9 @@ class Thergioni {
       rt=nt;
     }
     try {
-      ttslo = type.getTotalThreshSlo().intValue();
+      ttsl = type.getTotalThreshSl().intValue();
     } catch (NullPointerException npe) {
-      ttslo = ttw;
+      ttsl = ttw;
     }
     try {
       nr = type.getNotifRepeat().intValue();
@@ -776,8 +776,8 @@ class Thergioni {
 		thresholds[4]=ut;
 		logger.config(" +- react threshold: " + rt);
 		thresholds[5]=rt;
-    logger.config(" +- slo threshold: " + ttslo);
-    thresholds[6]=ttslo;
+    logger.config(" +- sl threshold: " + ttsl);
+    thresholds[6]=ttsl;
 		logger.config(" +- accumulative threshold warning: " + atw);
 		logger.config(" +- accumulative threshold error: " + ate);
 		logger.config(" +- accumulative time warning: " + atmw + " (mins)");
