@@ -10,6 +10,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.time.LocalDateTime;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 class Thergioni {
 	public static void main(String args[]) {
 		Thergioni myThergioni = new Thergioni();
@@ -126,11 +132,11 @@ class Thergioni {
 			Unmarshaller u = jc.createUnmarshaller();
 			Site mySite = (Site)u.unmarshal( new FileInputStream(fileName));
 
-                        String webPath = new String("./");
+      String webPath = new String("./");
 			if (mySite.getWebPath() != null ) {
-                                webPath = mySite.getWebPath();
+        webPath = mySite.getWebPath();
 				webPath = webPath + "/";
-                        }
+      }
 
 			if (mySite.getLogLevel() == null) {
 				setupLogger(mySite.getLogFile(),"Info",webPath+mySite.getWebFile());
@@ -172,8 +178,16 @@ class Thergioni {
 			}
 			logger.config("web_status path: " + statusFilePath);
 
-//			logger.config("threads : " + threads);
-//			threads = mySite.getParallelChecks().intValue();
+      dbName = "thergioni-slo.db";
+      if (mySite.getDbName() == null) {
+        logger.warning("db_name not set. Using default = thergioni-slo.db");
+      } else {
+        dbName = mySite.getDbName();
+      }
+      connection = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+
+//		logger.config("threads : " + threads);
+//		threads = mySite.getParallelChecks().intValue();
 
 			if (mySite.getTotalThreshWarn() == null) {
 				logger.warning("total_thresh_warn not set, using default = 1");
@@ -313,13 +327,13 @@ class Thergioni {
 				logger.severe("No default Notification set !");
 			}
 
-			if (mySite.getAccumTimeError() == null) {
-                                logger.warning("accum_time_error not set, using default = 60 (mins)");
-                                defAccumTimeError=60;
-                        } else {
-                                defAccumTimeError = mySite.getAccumTimeError().intValue();
-                        }
-                        logger.config("accumulative time error (mins) : " + defAccumTimeError);
+      if (mySite.getAccumTimeError() == null) {
+        logger.warning("accum_time_error not set, using default = 60 (mins)");
+        defAccumTimeError=60;
+      } else {
+        defAccumTimeError = mySite.getAccumTimeError().intValue();
+      }
+      logger.config("accumulative time error (mins) : " + defAccumTimeError);
 
 			logger.fine("Setting status script");
 			if (mySite.getStatusScript() == null) {
@@ -364,6 +378,7 @@ class Thergioni {
 				failedFavicons[4] = mySite.getFaviconUrgent();
 			else
 				failedFavicons[4] = new String("urgent.png");
+
 			
 			logger.info("Initialization Complete");
 			argMap.clear();
@@ -622,19 +637,19 @@ class Thergioni {
 		/*
 		 * This part deals with reaction script
 		 */
-                List<String> reactionList = new ArrayList<String>();
-		Vector<String> reactions = new Vector<String>();
-                reactionList = type.getReaction();
-                if (!reactionList.isEmpty()) {
-                        for (String react : reactionList) {
-				react=react.replaceAll("\\$cp", checkPath);
-                                logger.config(" +++ : reaction -> "+react);
-				reactions.addElement(react);
-                        }
-                        reactionMap.put(typeName, reactions);
-                } else {
-                        logger.config(" +++ : reaction -> none");
-                }
+    List<String> reactionList = new ArrayList<String>();
+    Vector<String> reactions = new Vector<String>();
+    reactionList = type.getReaction();
+    if (!reactionList.isEmpty()) {
+      for (String react : reactionList) {
+        react=react.replaceAll("\\$cp", checkPath);
+        logger.config(" +++ : reaction -> "+react);
+        reactions.addElement(react);
+      }
+      reactionMap.put(typeName, reactions);
+    } else {
+      logger.config(" +++ : reaction -> none");
+    }
 
 		/* 
 		 * This part deals with "notify" attribute.
@@ -672,61 +687,66 @@ class Thergioni {
 		 * nr - number of failures after which is should notify again
 		 */
 
-		int ttw, tte, nt, nr, ut, atw, ate, atmw, atme, rt;
-		int[] thresholds = new int[6];
+		int ttw, tte, ttslo, nt, nr, ut, atw, ate, atmw, atme, rt;
+		int[] thresholds = new int[7];
 
-		try {
-			ttw = type.getTotalThreshWarn().intValue();
-		} catch (NullPointerException npe) {
-                        ttw=defTotalThreshWarn;
-                }
-		try {
-			tte = type.getTotalThreshError().intValue();
-		} catch (NullPointerException npe) {
-                        tte=defTotalThreshError;
-                }
-		try {
-			nt = type.getNotifThresh().intValue();
-		} catch (NullPointerException npe) {
-                        nt=defNotifThresh;
-                }
-		try {
-			rt = type.getReactThresh().intValue();
-		} catch (NullPointerException npe) {
-                        rt=nt;
-                }
-		try {
-			nr = type.getNotifRepeat().intValue();
-		} catch (NullPointerException npe) {
-                        nr=defNotifRepeat;
-                }
-		try {
-			ut = type.getUrgentThresh().intValue();
-		} catch (NullPointerException npe) {
-                        ut=defUrgentThresh;
-                }
-		try {
-			atw = type.getAccumThreshWarn().intValue();
-		} catch (NullPointerException npe) {
-                        atw=defAccumThreshWarn;
-                }
-		try {
-			ate = type.getAccumThreshError().intValue();
-		} catch (NullPointerException npe) {
-                        ate=defAccumThreshError;
-                }
-		try {
-			atmw = type.getAccumTimeWarn().intValue();
-		} catch (NullPointerException npe) {
-                        atmw=defAccumTimeWarn;
-                }
-		try {
-			atme = type.getAccumTimeError().intValue();
-		} catch (NullPointerException npe) {
-                        atme=defAccumTimeError;
-                }
+    try {
+      ttw = type.getTotalThreshWarn().intValue();
+    } catch (NullPointerException npe) {
+      ttw=defTotalThreshWarn;
+    }
+    try {
+      tte = type.getTotalThreshError().intValue();
+    } catch (NullPointerException npe) {
+      tte=defTotalThreshError;
+    }
+    try {
+      nt = type.getNotifThresh().intValue();
+    } catch (NullPointerException npe) {
+      nt=defNotifThresh;
+    }
+    try {
+      rt = type.getReactThresh().intValue();
+    } catch (NullPointerException npe) {
+      rt=nt;
+    }
+    try {
+      ttslo = type.getTotalThreshSlo().intValue();
+    } catch (NullPointerException npe) {
+      ttslo = ttw;
+    }
+    try {
+      nr = type.getNotifRepeat().intValue();
+    } catch (NullPointerException npe) {
+      nr=defNotifRepeat;
+    }
+    try {
+      ut = type.getUrgentThresh().intValue();
+    } catch (NullPointerException npe) {
+      ut=defUrgentThresh;
+    }
+    try {
+      atw = type.getAccumThreshWarn().intValue();
+    } catch (NullPointerException npe) {
+      atw=defAccumThreshWarn;
+    }
+    try {
+      ate = type.getAccumThreshError().intValue();
+    } catch (NullPointerException npe) {
+      ate=defAccumThreshError;
+    }
+    try {
+      atmw = type.getAccumTimeWarn().intValue();
+    } catch (NullPointerException npe) {
+      atmw=defAccumTimeWarn;
+    }
+    try {
+      atme = type.getAccumTimeError().intValue();
+    } catch (NullPointerException npe) {
+      atme=defAccumTimeError;
+    }
 
-		logger.config(" +- total threshold warning: " + ttw);
+    logger.config(" +- total threshold warning: " + ttw);
 		thresholds[0]=ttw;
 		logger.config(" +- total threshold error: " + tte);
 		thresholds[1]=tte;
@@ -738,6 +758,8 @@ class Thergioni {
 		thresholds[4]=ut;
 		logger.config(" +- react threshold: " + rt);
 		thresholds[5]=rt;
+    logger.config(" +- slo threshold: " + ttslo);
+    thresholds[6]=ttslo;
 		logger.config(" +- accumulative threshold warning: " + atw);
 		logger.config(" +- accumulative threshold error: " + ate);
 		logger.config(" +- accumulative time warning: " + atmw + " (mins)");
@@ -1142,8 +1164,8 @@ class Thergioni {
 		}
 
 		if (mfc.equals("N") && (accum == ACCUMNONE)) {
-                        sentNotif.remove("U_"+type);
-                        sentNotif.remove("F_"+type);
+      sentNotif.remove("U_"+type);
+      sentNotif.remove("F_"+type);
 			sentNotif.remove("W_"+type);
 			sentNotif.put("N_"+type, 0);
 			if (state > STATE_NOTICE) {
@@ -1329,19 +1351,19 @@ class Thergioni {
 	}
 
 	private String stateToString(short state) {
-		switch(state) {
-                        case STATE_URGENT:
-                                return "URGENT";
-                        case STATE_ERROR:
-				return "ERROR";
-                        case STATE_WARN:
-				return "WARNING";
-                        case STATE_NOTICE:
-				return "NOTICE";
-                        case STATE_OK:
-				return "OK";
-                }
-		return "Invalid State";
+    switch(state) {
+      case STATE_URGENT:
+        return "URGENT";
+      case STATE_ERROR:
+        return "ERROR";
+      case STATE_WARN:
+        return "WARNING";
+      case STATE_NOTICE:
+        return "NOTICE";
+      case STATE_OK:
+        return "OK";
+    }
+    return "Invalid State";
 	}
 
 	private void notifyStateChange(String type, Executor executor, short newState) {
@@ -1732,44 +1754,44 @@ class Thergioni {
 		private Vector<String> errorScripts;
 	}
 
-	private class RotationNotifier implements Runnable {
-                public RotationNotifier() {
-			rotNotifierMap = new HashMap<String, String>();
-                }
+  private class RotationNotifier implements Runnable {
+    public RotationNotifier() {
+      rotNotifierMap = new HashMap<String, String>();
+    }
 
-                public void run() {
-			LocalDateTime now = LocalDateTime.now();
-			int minute = now.getMinute();
-			int toSleep = (60 - minute)*60000;
-			while (true) {
-				checkRotations();
-				try {
-					Thread.sleep(toSleep);
-				} catch (InterruptedException e) {
-					System.err.println("Ooops: "+e.getCause());
-				}
-				toSleep = 3600000;
-			}
-                }
-
-		private void checkRotations() {
-			for (String k : rotMap.keySet()) {
-				String ocName = rotMap.get(k).getOnCall().getName();
-				if (!ocName.equals(rotNotifierMap.get(k))) {
-					String output = "Oncall changed for "+k+" from " + rotNotifierMap.get(k) + " to "+ocName;
-					logger.info(output);
-					webLog.info(output);
-					rotNotifierMap.put(k, ocName);
-				}
-                        }
-		}
-
-		private Map<String, String> rotNotifierMap;
+    public void run() {
+      LocalDateTime now = LocalDateTime.now();
+      int minute = now.getMinute();
+      int toSleep = (60 - minute)*60000;
+      while (true) {
+        checkRotations();
+        try {
+          Thread.sleep(toSleep);
+        } catch (InterruptedException e) {
+          System.err.println("Ooops: "+e.getCause());
         }
+        toSleep = 3600000;
+      }
+    }
+
+    private void checkRotations() {
+      for (String k : rotMap.keySet()) {
+        String ocName = rotMap.get(k).getOnCall().getName();
+        if (!ocName.equals(rotNotifierMap.get(k))) {
+          String output = "Oncall changed for "+k+" from " + rotNotifierMap.get(k) + " to "+ocName;
+          logger.info(output);
+          webLog.info(output);
+          rotNotifierMap.put(k, ocName);
+        }
+      }
+    }
+
+    private Map<String, String> rotNotifierMap;
+  }
 
 
-	private class OnCall {
-		public OnCall(String nm, String em, String num, String xm, boolean elvOnly) {
+  private class OnCall {
+    public OnCall(String nm, String em, String num, String xm, boolean elvOnly) {
 			name=nm;
 			email=em;
 			number=num;
@@ -1992,4 +2014,7 @@ class Thergioni {
 	private static final short STATE_WARN = 2;
 	private static final short STATE_ERROR = 3;
 	private static final short STATE_URGENT = 4;
+
+  private Connection connection;
+  private String dbName;
 }
