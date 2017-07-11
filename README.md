@@ -17,6 +17,9 @@ It was designed to be the _one_ tool to centralize monitoring and alerting, and 
 * make
 * java Thergioni sample-conf.xml
 
+### Optional dependancy ###
+* [Download sqlite jdbc](https://bitbucket.org/xerial/sqlite-jdbc/downloads/) and add it to your classpath.  
+This will create a local sqlite db, in which it will store passed and failed check counts per day, so you can calculate service levels.
 
 ## Design ##
 Thergioni is designed to be dependancy aware, and able to distinguish blips from problems.
