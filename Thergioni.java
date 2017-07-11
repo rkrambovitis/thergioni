@@ -392,17 +392,21 @@ class Thergioni {
 		}
 	}
 
-  private void setupDb(String dbName) throws SQLException {
-    sqlConnection = DriverManager.getConnection("jdbc:sqlite:" + dbName);
-    Statement statement = sqlConnection.createStatement();
-    statement.setQueryTimeout(30);
-    statement.execute("CREATE TABLE IF NOT EXISTS slo "
-        + "(type TEXT PRIMARY KEY, "
-        + "dt INTEGER, "
-        + "up INTEGER DEFAULT 0, "
-        + "down INTEGER DEFAULT 0);");
+  private void setupDb(String dbName) {
+    try {
+      sqlConnection = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+      Statement statement = sqlConnection.createStatement();
+      statement.setQueryTimeout(30);
+      statement.execute("CREATE TABLE IF NOT EXISTS slo "
+          + "(type TEXT PRIMARY KEY, "
+          + "dt INTEGER, "
+          + "up INTEGER DEFAULT 0, "
+          + "down INTEGER DEFAULT 0);");
 
-    pStatement = sqlConnection.prepareStatement(psUpdateText);
+      pStatement = sqlConnection.prepareStatement(psUpdateText);
+    } catch (SQLException se) {
+      logger.severe("Unable to setup DB " + se.getMessage());
+    }
   }
 
 	private void createRotationNotifier() {
@@ -1103,8 +1107,8 @@ class Thergioni {
       }
 
 
-    } catch (SQLException se) {
-      logger.severe(se.getMessage());
+    } catch (NullPointerException | SQLException se) {
+      logger.severe("Unable to issue updated to db: " + se.getMessage());
     }
   }
 
