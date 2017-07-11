@@ -179,9 +179,9 @@ class Thergioni {
 			}
 			logger.config("web_status path: " + statusFilePath);
 
-      String dbName = "thergioni-slo.db";
+      String dbName = "thergioni-sl.db";
       if (mySite.getDbName() == null) {
-        logger.warning("db_name not set. Using default = thergioni-slo.db");
+        logger.warning("db_name not set. Using default = thergioni-sl.db");
       } else {
         dbName = mySite.getDbName();
       }
@@ -705,7 +705,7 @@ class Thergioni {
 		 * nr - number of failures after which is should notify again
 		 */
 
-		int ttw, tte, ttslo, nt, nr, ut, atw, ate, atmw, atme, rt;
+		int ttw, tte, ttsl, nt, nr, ut, atw, ate, atmw, atme, rt;
 		int[] thresholds = new int[7];
 
     try {
@@ -729,9 +729,9 @@ class Thergioni {
       rt=nt;
     }
     try {
-      ttslo = type.getTotalThreshSlo().intValue();
+      ttsl = type.getTotalThreshSl().intValue();
     } catch (NullPointerException npe) {
-      ttslo = ttw;
+      ttsl = ttw;
     }
     try {
       nr = type.getNotifRepeat().intValue();
@@ -776,8 +776,8 @@ class Thergioni {
 		thresholds[4]=ut;
 		logger.config(" +- react threshold: " + rt);
 		thresholds[5]=rt;
-    logger.config(" +- slo threshold: " + ttslo);
-    thresholds[6]=ttslo;
+    logger.config(" +- sl threshold: " + ttsl);
+    thresholds[6]=ttsl;
 		logger.config(" +- accumulative threshold warning: " + atw);
 		logger.config(" +- accumulative threshold error: " + ate);
 		logger.config(" +- accumulative time warning: " + atmw + " (mins)");
@@ -992,7 +992,9 @@ class Thergioni {
 			}
 		}
 
-    updateSloDb(type, results[1]);
+    if (topTypes.contains(type)) {
+      updateSloDb(type, results[1]);
+    }
 
 		if (results[1] == 0) {
 			//all OK, just return.
