@@ -15,6 +15,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.PreparedStatement;
 
 class Thergioni {
 	public static void main(String args[]) {
@@ -392,10 +393,16 @@ class Thergioni {
 	}
 
   private void setupDb(String dbName) throws SQLException {
-      connection = DriverManager.getConnection("jdbc:sqlite:" + dbName);
-      Statement statement = connection.createStatement();
-      statement.setQueryTimeout(30);
-      statement.execute("CREATE TABLE IF NOT EXISTS slo (type TEXT PRIMARY KEY, dt INTEGER, up INTEGER, down INTEGER);");
+    sqlConnection = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+    Statement statement = sqlConnection.createStatement();
+    statement.setQueryTimeout(30);
+    statement.execute("CREATE TABLE IF NOT EXISTS slo "
+        + "(type TEXT PRIMARY KEY, "
+        + "dt INTEGER, "
+        + "up INTEGER DEFAULT 0, "
+        + "down INTEGER DEFAULT 0);");
+
+    pStatement = sqlConnection.prepareStatement(psUpdateText);
   }
 
 	private void createRotationNotifier() {
@@ -980,6 +987,9 @@ class Thergioni {
 				failedOutput=(""+e.getCause());
 			}
 		}
+
+    updateSloDb(type, results[1]);
+
 		if (results[1] == 0) {
 			//all OK, just return.
 			//System.err.println("returning null for "+type);
@@ -1066,6 +1076,42 @@ class Thergioni {
 		return message;
 	}
 
+  private void updateSloDb(String type, int failures) {
+    try {
+      //private static String psText = "UPDATE slo SET up = up + ?, down = down + ? where TYPE = ? AND dt = ?";
+      pStatement.setString(3, type);
+      pStatement.setInt(4, today());
+      if(failures >= typeThresholds.get(type)[6]) {
+        // increment Down
+        pStatement.setInt(1, 0);
+        pStatement.setInt(2, 1);
+      } else {
+        // increment up
+        pStatement.setInt(1, 1);
+        pStatement.setInt(2, 0);
+      }
+
+      if (pStatement.executeUpdate() == 0) {
+        Statement statement = sqlConnection.createStatement();
+        statement.setQueryTimeout(30);
+
+        if(failures >= typeThresholds.get(type)[6]) {
+          statement.execute("INSERT INTO slo VALUES ('" + type + "'," + today() + ", 0, 1)");
+        } else {
+          statement.execute("INSERT INTO slo VALUES ('" + type + "'," + today() + ", 1, 0)");
+        }
+      }
+
+
+    } catch (SQLException se) {
+      logger.severe(se.getMessage());
+    }
+  }
+
+  private int today() {
+    SimpleDateFormat date_format = new SimpleDateFormat("yyyyMMdd");
+    return Integer.parseInt(date_format.format(new Date()));
+  }
 
 	/*
 	 * Nothing Special.
@@ -2022,5 +2068,7 @@ class Thergioni {
 	private static final short STATE_ERROR = 3;
 	private static final short STATE_URGENT = 4;
 
-  private Connection connection;
+  private Connection sqlConnection;
+  private PreparedStatement pStatement;
+  private static String psUpdateText = "UPDATE OR IGNORE slo SET up = up + ?, down = down + ? where TYPE = ? AND dt = ?";
 }
