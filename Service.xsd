@@ -7,6 +7,7 @@
 		<xs:element name="web_file" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_config" type="xs:string" minOccurs="1" maxOccurs="1"/>
 		<xs:element name="web_status" type="xs:string" />
+		<xs:element name="db_name" type="xs:string" />
 		<xs:element name="status_script" type="xs:string" />
 		<xs:element name="web_level" type="xs:string"/>
 		<xs:element name="web_title" type="xs:string"/>
@@ -58,6 +59,7 @@
 			<xs:element name="error_thresh" type="xs:integer"/>
 			<xs:element name="total_thresh_warn" type="xs:integer"/>
 			<xs:element name="total_thresh_error" type="xs:integer"/>
+			<xs:element name="total_thresh_slo" type="xs:integer"/>
 			<xs:element name="notif_thresh" type="xs:integer"/>
 			<xs:element name="react_thresh" type="xs:integer"/>
 			<xs:element name="notif_repeat" type="xs:integer"/>
