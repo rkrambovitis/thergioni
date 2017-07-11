@@ -59,7 +59,7 @@
 			<xs:element name="error_thresh" type="xs:integer"/>
 			<xs:element name="total_thresh_warn" type="xs:integer"/>
 			<xs:element name="total_thresh_error" type="xs:integer"/>
-			<xs:element name="total_thresh_slo" type="xs:integer"/>
+			<xs:element name="total_thresh_sl" type="xs:integer"/>
 			<xs:element name="notif_thresh" type="xs:integer"/>
 			<xs:element name="react_thresh" type="xs:integer"/>
 			<xs:element name="notif_repeat" type="xs:integer"/>
