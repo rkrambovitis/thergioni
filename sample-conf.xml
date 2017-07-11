@@ -158,6 +158,8 @@
     <total_thresh_warn>3</total_thresh_warn>
     -->
 
+    <!-- By default, any check that surpasses warning level will mark service as "down" in the (optional) service level db -->
+    <!-- This can be overridden with the following switch -->
     <!--
     <total_thresh_sl>1</total_thresh_sl>
     -->
