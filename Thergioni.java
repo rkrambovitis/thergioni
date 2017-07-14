@@ -398,7 +398,7 @@ class Thergioni {
       Statement statement = sqlConnection.createStatement();
       statement.setQueryTimeout(30);
       statement.execute("CREATE TABLE IF NOT EXISTS slo "
-          + "(type TEXT PRIMARY KEY, "
+          + "(type TEXT, "
           + "dt INTEGER, "
           + "up INTEGER DEFAULT 0, "
           + "down INTEGER DEFAULT 0);");
@@ -1110,7 +1110,7 @@ class Thergioni {
 
 
     } catch (NullPointerException | SQLException se) {
-      logger.severe("Unable to issue updated to db: " + se.getMessage());
+      logger.severe("Unable to issue update to db: " + se.getMessage());
     }
   }
 
