@@ -300,6 +300,17 @@ class Thergioni {
 			}
 			logger.config("Main loop pause Extra Random max time : " + pauseExtra);
 
+			logger.fine("Processing Notifications");
+			List<Site.Notification> notificationList = new ArrayList<Site.Notification>();
+			notificationList = mySite.getNotification();
+      notificationNames = new ArrayList<String>();
+			for ( Site.Notification not : notificationList) {
+				processNotification(not);
+			}
+			if (defaultNotif.size() == 0 ) {
+				logger.severe("No default Notification set !");
+			}
+
 			logger.fine("Processing Types and Checks definitions");
 			//List<Site.Type> typeList  = new ArrayList<Site.Type>();
 			typeList  = new ArrayList<Site.Type>();
@@ -316,16 +327,6 @@ class Thergioni {
 			nodes = nodeList.getNode();
 			for ( Site.Nodes.Node n : nodes ) {
 				processNode(n);
-			}
-
-			logger.fine("Processing Notifications");
-			List<Site.Notification> notificationList = new ArrayList<Site.Notification>();
-			notificationList = mySite.getNotification();
-			for ( Site.Notification not : notificationList) {
-				processNotification(not);
-			}
-			if (defaultNotif.size() == 0 ) {
-				logger.severe("No default Notification set !");
 			}
 
       if (mySite.getAccumTimeError() == null) {
@@ -520,11 +521,14 @@ class Thergioni {
 	 */
 	private void processNotification(Site.Notification notification) {
 		logger.config("Notification group: "+notification.getName());
-		if (warnMap.containsKey(notification.getName())) {
+    if (notificationNames.contains(notification.getName())) {
 			logger.severe("ERROR: Duplicate notification name: "+notification.getName());
 			System.err.println("ERROR: Duplicate notification name: "+notification.getName());
 			System.exit(1);
-		}
+		} else {
+      notificationNames.add(notification.getName());
+    }
+
 		if (notification.isDefault()) {
 			defaultNotif.add(notification.getName());
 		}
@@ -673,13 +677,20 @@ class Thergioni {
 		 * This part deals with "notify" attribute.
 		 * It creates a list of "who to notify" if said type goes wrong.
 		 */
-		List<String> notifyList = new ArrayList<String>();
-		notifyList = type.getNotify();
-		if (!notifyList.isEmpty()) {
-			for (String tonot : notifyList) {
-				logger.config(" +++ : notify -> "+tonot);
-			}
-			notifyMap.put(typeName, notifyList);
+		List<String> notifyList = type.getNotify();
+    List<String> notifyClone = new ArrayList<String>();
+    notifyClone.addAll(notifyList);
+    for (String tonot : notifyList) {
+      if (notificationNames.contains(tonot)) {
+        logger.config(" +++ : notify -> " + tonot);
+      } else {
+        logger.warning(" ++++ : notify " + tonot + " not defined !");
+        notifyClone.remove(tonot);
+      }
+    }
+
+		if (!notifyClone.isEmpty()) {
+			notifyMap.put(typeName, notifyClone);
 		} else {
 			logger.config(" +++ : notify -> default");
 		}
@@ -2020,6 +2031,7 @@ class Thergioni {
 	private Map<String,Long> lastNotif;
 	// list of types
 	private List<Site.Type> typeList;
+  private List<String> notificationNames;
 	private int defTotalThreshWarn;
 	private int defTotalThreshError;
 	private int defNotifThresh;

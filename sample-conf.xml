@@ -216,6 +216,7 @@
     <name>mysql</name>
     <check>$cp/check_mysql</check>
     <top>true</top>
+    <notify>does-not-exist</notify>
   </type>
 
   <type>
