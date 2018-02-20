@@ -30,7 +30,7 @@ class Thergioni {
   }
 
   public Thergioni() {
-    of = new ObjectFactory();  
+    of = new ObjectFactory();
     checkMap = new HashMap<String,List<String>>();
     argMap = new HashMap<String,List<String>>();
     typeMap = new HashMap<String,Vector<String>>();
@@ -71,7 +71,7 @@ class Thergioni {
   private void printUsage() {
     System.err.println("Usage: java Thergioni <path_to_config>");
   }
-  
+
   /*
    * This method does excactly what is says on the tin
    */
@@ -246,7 +246,7 @@ class Thergioni {
         if (defAccumThreshWarn <= defNotifThresh) {
           logger.warning("accum_thresh_warn must be greater than notif_thresh. using default = 0 (disabled)");
           defAccumThreshWarn=0;
-        }  
+        }
       }
       logger.config("accumulative theshold warning : " + defAccumThreshWarn);
 
@@ -319,7 +319,6 @@ class Thergioni {
         processType(s);
       }
       logger.fine("Processing Types complete\n");
-      
 
       logger.fine("Processing Nodes");
       Site.Nodes nodeList = (Site.Nodes)mySite.getNodes();
@@ -356,32 +355,31 @@ class Thergioni {
       logger.config("web_title: " + webTitle);
 
       logger.fine("Setting web title and favicons");
-      if (mySite.getFaviconOk() != null) 
+      if (mySite.getFaviconOk() != null)
         failedFavicons[0] = mySite.getFaviconOk();
       else
         failedFavicons[0] = new String("favicon.png");
 
-      if (mySite.getFaviconNotice() != null) 
+      if (mySite.getFaviconNotice() != null)
         failedFavicons[1] = mySite.getFaviconNotice();
       else
         failedFavicons[1] = new String("notice.png");
 
-      if (mySite.getFaviconWarning() != null) 
+      if (mySite.getFaviconWarning() != null)
         failedFavicons[2] = mySite.getFaviconWarning();
       else
         failedFavicons[2] = new String("warning.png");
 
-      if (mySite.getFaviconError() != null) 
+      if (mySite.getFaviconError() != null)
         failedFavicons[3] = mySite.getFaviconError();
       else
         failedFavicons[3] = new String("error.png");
 
-      if (mySite.getFaviconUrgent() != null) 
+      if (mySite.getFaviconUrgent() != null)
         failedFavicons[4] = mySite.getFaviconUrgent();
       else
         failedFavicons[4] = new String("urgent.png");
 
-      
       logger.info("Initialization Complete");
       argMap.clear();
       checkMap.clear();
@@ -560,7 +558,7 @@ class Thergioni {
     warnMap.put(notification.getName(), warnScripts);
     errorMap.put(notification.getName(), errorScripts);
     spamMap.put(notification.getName(), spamScripts);
-    
+
     // NEW -> the rotation crap
     Site.Notification.Rotation rot = notification.getRotation();
     if (rot == null) {
@@ -588,7 +586,7 @@ class Thergioni {
    * data = list of check String (i.e. /home/system/check/check_mysql -h $h)
    * The map is called checkMap and is privately accessible
    *
-   * It will create a hashmap with 
+   * It will create a hashmap with
    * key = typename (i.e. cds) and
    * data = list of dependancies (named of other types)
    * the map is called typeMap and is privately accessible
@@ -639,7 +637,7 @@ class Thergioni {
       logger.config(" +- Broken by: " + brk);
     }
 
-    /* 
+    /*
      * This part deals with "long_output" attribute
      */
     if (type.isLongOutput()) {
@@ -648,7 +646,7 @@ class Thergioni {
     }
 
 
-    /* 
+    /*
      * This part deals with "top" attribute
      */
     if (type.isTop()) {
@@ -673,7 +671,7 @@ class Thergioni {
       logger.config(" +++ : reaction -> none");
     }
 
-    /* 
+    /*
      * This part deals with "notify" attribute.
      * It creates a list of "who to notify" if said type goes wrong.
      */
@@ -706,8 +704,8 @@ class Thergioni {
       logger.config(" +++ : Snooze -> "+snc);
     } catch (NullPointerException npe) {
       logger.config(" +++ : Snooze -> OFF");
-                }
-    
+    }
+
     /*
      * This part deals with threshold
      * ttw - total threshold warning (how many failures make a warning)
@@ -715,7 +713,6 @@ class Thergioni {
      * nt - number of failures after which it should notify
      * nr - number of failures after which is should notify again
      */
-
     int ttw, tte, ttsl, nt, nr, ut, atw, ate, atmw, atme, rt;
     int[] thresholds = new int[7];
 
@@ -799,11 +796,11 @@ class Thergioni {
   }
 
 
-  /* 
+  /*
    * This method processes a given node.
    *
    * It creates a hashmap with any special check arguments.
-   * The check must be the same as the whole check name 
+   * The check must be the same as the whole check name
    * (including potential paths and arguments defined generally)
    * key = nodename_checkname (i.e. thor_check_cds -h $h)
    * data = String from <checkargs>
@@ -1058,7 +1055,7 @@ class Thergioni {
             }
           }
         }
-      } 
+      }
       if (!message.contains("Broken by")) {
         List<String> deps = typeDeps.get(type);
         if (deps != null) {
@@ -1073,7 +1070,7 @@ class Thergioni {
         }
       }
     }
-    
+
     if (longOutputTypes.contains(type)) {
       message = longMessage;
     }
@@ -1157,7 +1154,7 @@ class Thergioni {
             continue;
           }
           logger.fine("NOT Snoozing "+top);
-        } else 
+        } else
           logger.finest("Snooze NOT found for "+top);
         message=check(top, executor, true);
         dispatchNotification(top, message, executor);
@@ -1390,7 +1387,7 @@ class Thergioni {
       executor.execute(r);
     }
 
-  } 
+  }
 
   private void react(String type, Executor executor) {
     if (reactionMap.containsKey(type)) {
@@ -1467,7 +1464,7 @@ class Thergioni {
     for (String s : v) {
       Runnable r = new Runner(s+" "+message);
       logger.info("Dispatching notification " + s + " " + message);
-      executor.execute(r);    
+      executor.execute(r);
     }
     //Runnable r = new Runner(type, message, "recovery");
     //executor.execute(r);
@@ -1552,7 +1549,7 @@ class Thergioni {
       buf.append(calcDate(rec.getMillis()));
       buf.append(" ");
       buf.append(rec.getLevel());
-      buf.append(" : "); 
+      buf.append(" : ");
       buf.append(formatMessage(rec));
       buf.append('\n');
       return buf.toString();
@@ -1630,7 +1627,7 @@ class Thergioni {
       warnScripts = new Vector<String>();
       errorScripts = new Vector<String>();
     }
-  
+
     public Vector<String> getWarn() {
       return warnScripts;
     }
@@ -1644,7 +1641,7 @@ class Thergioni {
     }
 
     public Vector<String> getScripts(OnCall onc, short warnOrError) {
-      Vector<String> scripts = new Vector<String>(); 
+      Vector<String> scripts = new Vector<String>();
       Vector<String> op = new Vector<String>();
 
       if (warnOrError == 1 )
@@ -1680,7 +1677,7 @@ class Thergioni {
     }
 
     public Vector<String> getAllScripts(short warnOrError) {
-      Vector<String> scripts = new Vector<String>(); 
+      Vector<String> scripts = new Vector<String>();
       Vector<String> op = new Vector<String>();
 
       if (warnOrError == 1)
@@ -1901,7 +1898,7 @@ class Thergioni {
       if (snoozeCnt >= snoozeMax) {
         snoozeCnt = 0;
         return false;
-      }  
+      }
       return true;
     }
     private int snoozeMax;
@@ -1965,7 +1962,7 @@ class Thergioni {
       if (accThreshError > 0) {
         if ((timeNow - tsErr) > accTimeError) {
           tsErr = timeNow;
-          cntErr = 0;  
+          cntErr = 0;
         }
         if (inc)
           cntErr++;
@@ -1984,7 +1981,7 @@ class Thergioni {
         cntWarn = 0;
       } else if (f == ACCUMERROR) {
         tsErr = timeNow;
-        cntErr = 0;  
+        cntErr = 0;
       }
     }
 
