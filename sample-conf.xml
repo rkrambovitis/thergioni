@@ -70,6 +70,8 @@
   <!-- i.e. if something fails, message sent, recovers, then fails again within short period, it will not send a new notification -->
   <notif_flap_buffer>5</notif_flap_buffer>
 
+  <alert_manager>http://127.0.0.1:9093</alert_manager>
+
   <!-- accumulate warning / errors / notices that don't trigger warn / error state -->
   <!-- If thresholds are breached, issue a notification -->
   <!--

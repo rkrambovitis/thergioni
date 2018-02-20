@@ -4,6 +4,10 @@ import java.math.BigInteger;
 import javax.xml.bind.*;
 import generated.*;
 import java.lang.Thread;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.util.concurrent.*;
 import java.util.logging.*;
 import java.text.SimpleDateFormat;
@@ -299,6 +303,13 @@ class Thergioni {
         pauseExtra=new BigInteger("0");
       }
       logger.config("Main loop pause Extra Random max time : " + pauseExtra);
+
+      alertManager = mySite.getAlertManager();
+      if (alertManager == null) {
+        logger.config("No AlertManager set up");
+      } else {
+        logger.config("Alert manager detected at: " + alertManager);
+      }
 
       logger.fine("Processing Notifications");
       List<Site.Notification> notificationList = new ArrayList<Site.Notification>();
@@ -1014,24 +1025,31 @@ class Thergioni {
     int tte = typeThresholds.get(type)[1];
     int ut = typeThresholds.get(type)[4];
 
+    String level = new String("Notice");
     message = type.toUpperCase() + "(";
     if (extraText) {
       if ((ut > 0) && (results[1] >= ut)) {
         message = message + "Urgent: ";
+        level = "Failure";
       } else if (results[1] >= tte) {
         message = message + "Failed: ";
+        level = "Failure";
       } else if (results[1] >= ttw) {
         message = message + "Warning: ";
+        level = "Warning";
       } else if (results[1] >= 1) {
         message = message + "Notice: ";
       }
     }
+
 
     message = message + results[1]+"f/"+results[0]+"ok";
     failedOutput = failedOutput.substring(0,(failedOutput.length()-2));
     longMessage = message + "(" + failedOutput+")";
     message = message +")";
     longMessage = longMessage + ")";
+
+    sendToAlertManager(level, type, longMessage);
 
     if (topTypes.contains(type)) {
       message = message.substring(0,1).toUpperCase()+message.substring(1);
@@ -1088,6 +1106,58 @@ class Thergioni {
     }
 
     return message;
+  }
+
+  private void sendToAlertManager(String level, String type, String message) {
+    if (alertManager == null) {
+      return;
+    }
+    String mClean = message.replaceAll("\"", "\\\"");
+
+    String json = new String(
+      "[{\"labels\":"
+      + "{\"source\":\"Thergioni\",\"alertname\":\"" + type + "\",\"severity\":\"" + level + "\",\"summary\":\"" + mClean +"\"}"
+      + ",\"annotations\":{\"summary\":\"" + mClean + "\"}"
+      + "}]");
+
+    System.out.println(json);
+    byte[] messageBytes;
+    int messageLength;
+    try {
+      messageBytes = json.getBytes( "UTF-8" );
+      messageLength = messageBytes.length;
+    } catch (UnsupportedEncodingException uee) {
+      logger.severe("Unable to convert alertmanager json to UTF-8 : " + json);
+      return;
+    }
+
+    URL url;
+    try {
+      url = new URL(alertManager + "/api/v1/alerts");
+    } catch (MalformedURLException mue) {
+      logger.severe("Invalid Alertmanager URL: " + alertManager+"/api/v1/alerts");
+      return;
+    }
+
+
+
+    try {
+      URLConnection con = url.openConnection();
+      HttpURLConnection http = (HttpURLConnection)con;
+      http.setRequestMethod("POST");
+      http.setDoOutput(true);
+      http.setReadTimeout(2000);
+      http.setConnectTimeout(2000);
+
+      http.setFixedLengthStreamingMode(messageLength);
+      http.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+      http.connect();
+      try(OutputStream os = http.getOutputStream()) {
+          os.write(messageBytes);
+      }
+    } catch (IOException ioe) {
+      logger.severe("Unable to post to alertmanager : " + message);
+    }
   }
 
   private void updateSloDb(String type, int failures) {
@@ -2053,6 +2123,8 @@ class Thergioni {
   private Long timeOut;
   private BigInteger pause;
   private BigInteger pauseExtra;
+  private String alertManager;
+  private boolean haveAlertManager = false;
   private ObjectFactory of;
 //  private String confFile;
 //  private String confPath;
