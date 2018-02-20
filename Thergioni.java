@@ -1115,7 +1115,7 @@ class Thergioni {
       + ",\"annotations\":{\"summary\":\"" + mClean + "\"}"
       + "}]");
 
-    System.out.println(json);
+    // System.out.println(json);
     byte[] messageBytes;
     int messageLength;
     try {
