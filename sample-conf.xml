@@ -45,7 +45,7 @@
   <check_timeout>4</check_timeout>
 
   <!-- how long to sleep (secs) before next check iteration -->
-  <main_loop_pause>25</main_loop_pause> 
+  <main_loop_pause>25</main_loop_pause>
 
   <!-- Max extra time to sleep (sec)(random, 0 - X) -->
   <main_loop_extra_random_pause>8</main_loop_extra_random_pause> 

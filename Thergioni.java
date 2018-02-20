@@ -1025,18 +1025,14 @@ class Thergioni {
     int tte = typeThresholds.get(type)[1];
     int ut = typeThresholds.get(type)[4];
 
-    String level = new String("Notice");
     message = type.toUpperCase() + "(";
     if (extraText) {
       if ((ut > 0) && (results[1] >= ut)) {
         message = message + "Urgent: ";
-        level = "Failure";
       } else if (results[1] >= tte) {
         message = message + "Failed: ";
-        level = "Failure";
       } else if (results[1] >= ttw) {
         message = message + "Warning: ";
-        level = "Warning";
       } else if (results[1] >= 1) {
         message = message + "Notice: ";
       }
@@ -1049,7 +1045,6 @@ class Thergioni {
     message = message +")";
     longMessage = longMessage + ")";
 
-    sendToAlertManager(level, type, longMessage);
 
     if (topTypes.contains(type)) {
       message = message.substring(0,1).toUpperCase()+message.substring(1);
@@ -1138,8 +1133,6 @@ class Thergioni {
       logger.severe("Invalid Alertmanager URL: " + alertManager+"/api/v1/alerts");
       return;
     }
-
-
 
     try {
       URLConnection con = url.openConnection();
@@ -1278,6 +1271,7 @@ class Thergioni {
       return;
     }
 
+
     Vector<String> v = new Vector<String>();
     ArrayList<String> notifyGroups = new ArrayList<String>();
 
@@ -1372,8 +1366,6 @@ class Thergioni {
       long timeNow = System.currentTimeMillis();
       long timeDiff = timeNow - lastMessage;
 
-
-
       logger.info("Count: "+sn+" (threshold:"+notifThresh+" repeat:"+notifRepeat+" sn%repeat:"+sn%notifRepeat+")");
       //boolean hitRepeatThresh = ((sn % notifRepeat) == notifThresh || sn == notifThresh);
       boolean hitRepeatThresh = (((sn - notifThresh) % notifRepeat) == 0);
@@ -1444,6 +1436,10 @@ class Thergioni {
       if (flapping) {
         webLog.info("Flapping service: " + type + "(" + (timeDiff/1000) + " secs since last notification)");
         logger.warning("Flapping service: " + type + " (" + (timeDiff/1000) + " secs since last notification) - Skipped");
+      }
+
+      if (sn >= notifThresh) {
+        sendToAlertManager(stateToString(getState(type)), type, message);
       }
     }
 
